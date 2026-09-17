@@ -1,35 +1,31 @@
+{% set regions = queries or queries_list %}
 <!DOCTYPE html>
-<html lang="pt-BR" class="scroll-smooth">
+<html lang="pt-BR" class="antialiased scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="referrer" content="no-referrer">
-    <title>OLX Radar • Monitor de Imóveis OLX Brasil</title>
+    <title>Imóveis Pulse</title>
 
-    <!-- Google Fonts Inter -->
+    <!-- Font Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- Tailwind CSS with CDN -->
+    <!-- Tailwind CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
                     colors: {
-                        brand: {
-                            50: '#f5f3ff',
-                            100: '#ede9fe',
-                            500: '#8b5cf6',
-                            600: '#7c3aed',
-                            700: '#6d28d9',
-                            olx: '#6e0ad6',
-                            orange: '#f28000',
+                        neutral: {
+                            900: '#111111',
+                            500: '#737373',
+                            400: '#A3A3A3',
+                            100: '#F5F5F5',
                         }
                     }
                 }
@@ -39,19 +35,32 @@
     <style type="text/tailwindcss">
         @layer utilities {
             .glass-header {
-                @apply backdrop-blur-xl bg-white/80 dark:bg-zinc-950/80 border-b border-zinc-200/80 dark:border-zinc-800/80;
+                @apply backdrop-blur-md bg-white/75 dark:bg-[#0C0C0E]/75 border-b border-neutral-200/60 dark:border-white/[0.06];
             }
-            .glass-card {
-                @apply bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl shadow-sm hover:shadow-xl hover:border-zinc-300 dark:hover:border-zinc-700 transition-all duration-200;
+            .glass-panel {
+                @apply backdrop-blur-md bg-white/80 dark:bg-[#141417]/80 border border-neutral-200/60 dark:border-white/[0.06];
+            }
+            .surface-card {
+                @apply bg-white dark:bg-[#141417] border border-neutral-200/70 dark:border-white/[0.06];
+            }
+            .surface-ring {
+                @apply ring-1 ring-black/[0.04] dark:ring-white/[0.06];
+            }
+            .surface-hover {
+                @apply hover:shadow-md transition-all duration-300 hover:-translate-y-0.5;
+            }
+            .kbd {
+                @apply inline-flex items-center justify-center rounded-[4px] border border-neutral-200 dark:border-white/[0.1] bg-neutral-100 dark:bg-white/[0.05] px-1.5 font-mono text-[10px] font-medium text-neutral-500 dark:text-neutral-400;
+            }
+            .no-scrollbar::-webkit-scrollbar {
+                display: none;
+            }
+            .no-scrollbar {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
             }
         }
     </style>
-
-    <!-- Mapbox / MapLibre GL CSS & JS (WebGL Vector Engine) -->
-    <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
-    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-
-    <!-- Script inicial para evitar Flash de Tema Desalinhado -->
     <script>
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
@@ -59,967 +68,502 @@
             document.documentElement.classList.remove('dark');
         }
     </script>
-
-    <style>
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-            background-color: rgba(156, 163, 175, 0.4);
-            border-radius: 9999px;
-        }
-        .dark ::-webkit-scrollbar-thumb {
-            background-color: rgba(75, 85, 99, 0.5);
-        }
-
-        /* MapLibre Popup Styles - Modern Theme */
-        .maplibregl-popup-content {
-            background: transparent !important;
-            box-shadow: none !important;
-            padding: 0 !important;
-            border-radius: 1rem !important;
-        }
-        .maplibregl-popup-tip {
-            display: none !important;
-        }
-        .maplibregl-popup-close-button {
-            top: 8px !important;
-            right: 8px !important;
-            background: rgba(0, 0, 0, 0.5) !important;
-            color: #fff !important;
-            border-radius: 50% !important;
-            width: 24px !important;
-            height: 24px !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            font-size: 14px !important;
-            backdrop-filter: blur(4px) !important;
-            border: none !important;
-            z-index: 10 !important;
-        }
-
-        /* Marker Pin */
-        .custom-map-marker {
-            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
-            cursor: pointer;
-        }
-        .custom-map-marker:hover, .custom-map-marker.active {
-            transform: scale(1.18) translateY(-4px);
-            z-index: 50;
-        }
-    </style>
 </head>
-<body class="bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 min-h-screen font-sans antialiased selection:bg-brand-500 selection:text-white transition-colors duration-200">
+<body class="bg-[#FAFAFA] dark:bg-[#0C0C0E] text-neutral-900 dark:text-neutral-100 min-h-screen transition-colors duration-200">
 
-    <!-- Top Sticky Header com Glassmorphism -->
-    <header class="sticky top-0 z-40 glass-header">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16 gap-4">
-                
-                <!-- Logo & Brand -->
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-olx via-indigo-600 to-brand-orange flex items-center justify-center text-white shadow-md shadow-purple-500/20">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <span class="font-bold text-lg tracking-tight text-zinc-900 dark:text-white">OLX Radar</span>
-                            <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60">Recife & RMR</span>
+    <!-- Header Fixo -->
+    <header class="fixed top-0 inset-x-0 h-[56px] glass-header z-40 px-4 sm:px-6 flex items-center justify-between">
+        <!-- Logo -->
+        <div class="flex items-center gap-2.5 w-1/3">
+            <span class="text-xs font-semibold tracking-widest text-neutral-900 dark:text-white uppercase">IMÓVEIS / PULSE</span>
+            <div class="w-2 h-2 rounded-full bg-emerald-500 ring-4 ring-emerald-500/20 animate-pulse"></div>
+        </div>
+
+        <!-- Seletor de Região (HUD Flutuante) -->
+        <div class="relative flex justify-center w-1/3">
+            <button id="regionDropdownBtn" onclick="toggleRegionDropdown()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full glass-panel surface-ring shadow-sm hover:shadow-md transition-all duration-200 text-xs font-medium focus:outline-none">
+                <span id="activeRegionName">Carregando Região...</span>
+                <svg class="w-3.5 h-3.5 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+
+            <!-- Dropdown Menu -->
+            <div id="regionDropdownMenu" class="absolute top-full mt-2 w-48 rounded-xl glass-panel surface-ring shadow-lg opacity-0 invisible translate-y-1 transition-all duration-200 origin-top overflow-hidden">
+                <div class="p-1 flex flex-col gap-0.5" id="regionDropdownItems">
+                    <button onclick="selectRegion('all')" class="w-full text-left px-3 py-2 rounded-lg text-xs font-medium hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors flex items-center justify-between group">
+                        <span>Todas as Regiões</span>
+                        <span class="opacity-0 group-hover:opacity-100 text-neutral-400">T</span>
+                    </button>
+                    {% if regions %}
+                        {% for r in regions %}
+                        <button onclick="selectRegion('{{ r.id }}', '{{ r.name }}')" class="w-full text-left px-3 py-2 rounded-lg text-xs font-medium hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors flex items-center justify-between">
+                            <span class="truncate">{{ r.name }}</span>
+                        </button>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Ações Rápidas -->
+        <div class="flex items-center justify-end gap-3 w-1/3">
+            <button onclick="toggleTheme()" class="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors focus:outline-none">
+                <svg id="themeIconDark" class="w-4 h-4 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                <svg id="themeIconLight" class="w-4 h-4 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+            </button>
+            <div class="relative hidden sm:block">
+                <button onclick="toggleSupportPopover()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors focus:outline-none">
+                    <span>Apoiar</span>
+                    <span class="text-sm leading-none">☕</span>
+                </button>
+                <!-- Popover -->
+                <div id="supportPopover" class="absolute top-full right-0 mt-2 w-64 p-4 rounded-xl glass-panel surface-ring shadow-xl opacity-0 invisible translate-y-1 transition-all duration-200 origin-top-right z-50">
+                    <h4 class="text-sm font-semibold mb-2">Gostou do projeto?</h4>
+                    <p class="text-xs text-neutral-500 dark:text-neutral-400 mb-3">Sua doação ajuda a manter os servidores rodando e o café quente.</p>
+                    <div class="bg-white p-2 rounded-lg mb-3 flex justify-center">
+                        <div class="w-32 h-32 bg-neutral-100 border-2 border-dashed border-neutral-300 rounded flex items-center justify-center text-neutral-400 text-[10px] select-none">
+                            Pix / QR Code
                         </div>
-                        <p class="text-xs text-zinc-500 dark:text-zinc-400 hidden sm:block">Monitoramento inteligente de imóveis com alertas</p>
                     </div>
-                </div>
-
-                <!-- Bot Status Pill -->
-                <div class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-600 dark:text-zinc-300">
-                    <span class="relative flex h-2.5 w-2.5">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                    </span>
-                    <span class="font-medium">Monitor Ativo</span>
-                    <span class="text-zinc-400 dark:text-zinc-600">•</span>
-                    <span class="text-zinc-500 dark:text-zinc-400">a cada {{ status.check_interval_minutes }} min</span>
-                </div>
-
-                <!-- Header Actions -->
-                <div class="flex items-center gap-2.5">
-                    <!-- Sincronizar Agora Button -->
-                    <button id="btnSync" onclick="triggerSync()" class="relative inline-flex items-center gap-2 px-3.5 py-2 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-brand-olx to-indigo-600 hover:from-purple-700 hover:to-indigo-700 rounded-xl shadow-sm hover:shadow-md hover:shadow-purple-500/20 active:scale-95 transition-all duration-150">
-                        <svg id="syncIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                        </svg>
-                        <span id="syncText">Sincronizar Agora</span>
-                    </button>
-
-                    <!-- Dark Mode Toggle Button -->
-                    <button id="themeToggle" onclick="toggleDarkMode()" aria-label="Alternar Tema" class="p-2 rounded-xl text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white border border-zinc-200 dark:border-zinc-800 transition-colors">
-                        <!-- Sun Icon (shown in dark mode) -->
-                        <svg id="themeSun" class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
-                        </svg>
-                        <!-- Moon Icon (shown in light mode) -->
-                        <svg id="themeMoon" class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
-                        </svg>
-                    </button>
-
-                    <!-- Swagger API Docs Link -->
-                    <a href="/docs" target="_blank" title="API Docs (Swagger)" class="hidden sm:inline-flex p-2 rounded-xl text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white border border-zinc-200 dark:border-zinc-800 transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
-                        </svg>
-                    </a>
+                    <button onclick="copyPix()" class="w-full py-2 rounded-lg bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 text-xs font-medium hover:opacity-90 transition-opacity focus:outline-none">Copiar Chave Pix</button>
                 </div>
             </div>
         </div>
     </header>
 
-    <!-- Main Container -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-
-        <!-- Metrics & Stats Grid (4 KPIs) -->
-        <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <!-- KPI 1: Total de Imóveis -->
-            <div class="glass-card p-4 flex flex-col justify-between">
-                <div class="flex items-center justify-between text-zinc-400 dark:text-zinc-500">
-                    <span class="text-xs font-semibold uppercase tracking-wider">Total de Imóveis</span>
-                    <svg class="w-4 h-4 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                    </svg>
+    <main class="pt-[56px] pb-16">
+        
+        <!-- Barra de Métricas (Ticker) -->
+        <div class="sticky top-[56px] z-30 border-b border-neutral-200/80 dark:border-white/[0.08] bg-white/80 dark:bg-[#141417]/80 backdrop-blur-md py-2 px-4 sm:px-6 flex items-center text-[13px] font-medium overflow-x-auto no-scrollbar tabular-nums whitespace-nowrap shadow-sm">
+            <div class="flex items-center gap-6 mx-auto w-full max-w-7xl">
+                <div class="flex items-center gap-2 text-neutral-500 dark:text-neutral-400">
+                    <span class="w-1.5 h-1.5 rounded-full bg-neutral-300 dark:bg-neutral-600"></span>
+                    Imóveis Ativos: <span id="stat-count" class="text-neutral-900 dark:text-neutral-100 tracking-tight">0</span>
                 </div>
-                <div class="mt-2 flex items-baseline gap-2">
-                    <span class="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">{{ stats.total_houses or total }}</span>
-                    <span class="text-xs text-zinc-500 dark:text-zinc-400">catalogados</span>
+                <span class="text-neutral-300 dark:text-neutral-700">•</span>
+                <div class="flex items-center gap-2 text-neutral-500 dark:text-neutral-400">
+                    Preço Médio: <span id="stat-avg" class="text-emerald-600 dark:text-emerald-400 tracking-tight">-</span>
                 </div>
-                <span class="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1">SQLite (WAL) Persistido</span>
-            </div>
-
-            <!-- KPI 2: Preço Médio -->
-            <div class="glass-card p-4 flex flex-col justify-between">
-                <div class="flex items-center justify-between text-zinc-400 dark:text-zinc-500">
-                    <span class="text-xs font-semibold uppercase tracking-wider">Preço Médio</span>
-                    <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
+                <span class="text-neutral-300 dark:text-neutral-700">•</span>
+                <div class="flex items-center gap-2 text-neutral-500 dark:text-neutral-400">
+                    Menor Valor: <span id="stat-min" class="text-emerald-600 dark:text-emerald-400 tracking-tight">-</span>
                 </div>
-                <div class="mt-2">
-                    <span class="text-xl sm:text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400 block truncate">
-                        {{ stats.avg_price }}
+                <span class="text-neutral-300 dark:text-neutral-700">•</span>
+                <div class="flex items-center gap-2 text-neutral-500 dark:text-neutral-400">
+                    Última Coleta: <span class="text-neutral-900 dark:text-neutral-100 tracking-tight">
+                        {% if status and status.last_run_at %} {{ status.last_run_at.strftime('%H:%M') }} {% else %} Há pouco {% endif %}
                     </span>
-                    <span class="text-xs text-zinc-500 dark:text-zinc-400">por aluguel</span>
-                </div>
-                <span class="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1">média dos anúncios ativos</span>
-            </div>
-
-            <!-- KPI 3: Menor Preço -->
-            <div class="glass-card p-4 flex flex-col justify-between">
-                <div class="flex items-center justify-between text-zinc-400 dark:text-zinc-500">
-                    <span class="text-xs font-semibold uppercase tracking-wider">Menor Preço</span>
-                    <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/>
-                    </svg>
-                </div>
-                <div class="mt-2">
-                    <span class="text-xl sm:text-2xl font-bold tracking-tight text-indigo-600 dark:text-indigo-400 block truncate">
-                        {{ stats.min_price }}
-                    </span>
-                    <span class="text-xs text-zinc-500 dark:text-zinc-400">mínimo encontrado</span>
-                </div>
-                <span class="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1">oportunidade de entrada</span>
-            </div>
-
-            <!-- KPI 4: Novas Casas (24h) -->
-            <div class="glass-card p-4 flex flex-col justify-between">
-                <div class="flex items-center justify-between text-zinc-400 dark:text-zinc-500">
-                    <span class="text-xs font-semibold uppercase tracking-wider">Novas Casas (24h)</span>
-                    <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                </div>
-                <div class="mt-2 flex items-baseline gap-2">
-                    <span class="text-2xl sm:text-3xl font-bold tracking-tight text-amber-500 dark:text-amber-400">+{{ stats.new_today }}</span>
-                    <span class="text-xs text-zinc-500 dark:text-zinc-400">anúncios</span>
-                </div>
-                <span class="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1">capturados recentemente</span>
-            </div>
-        </section>
-
-        <!-- Filtros Rápidos & Barra de Ferramentas -->
-        <section class="glass-card p-4 sm:p-5 space-y-4">
-            <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
-                
-                <!-- Search Box (Realtime Client-side Filter) -->
-                <div class="relative flex-1 min-w-[260px]">
-                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-400">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                        </svg>
-                    </div>
-                    <input type="text" id="filterSearch" oninput="applyClientFilters()" placeholder="Filtrar por título, bairro (ex: Boa Viagem, Várzea)..." class="w-full pl-10 pr-9 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-all">
-                    <button id="btnClearSearch" onclick="clearSearch()" class="absolute inset-y-0 right-0 pr-3 items-center text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hidden">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                    </button>
-                </div>
-
-                <!-- Dropdowns & Ordering -->
-                <div class="flex flex-wrap items-center gap-2.5">
-                    {% if queries_list and queries_list|length > 0 %}
-                    <!-- Seletor de Busca (SearchQuery) -->
-                    <div class="relative min-w-[170px]">
-                        <select id="querySelect" onchange="window.location.href='/?' + (this.value ? 'query_id=' + this.value : '')" class="w-full appearance-none bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 cursor-pointer transition-all">
-                            <option value="" {% if not selected_query_id %}selected{% endif %}>Todas as Buscas</option>
-                            {% for q in queries_list %}
-                            <option value="{{ q.id }}" {% if selected_query_id == q.id %}selected{% endif %}>{{ q.name }}</option>
-                            {% endfor %}
-                        </select>
-                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-zinc-400">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    <!-- Ordenação -->
-                    <div class="relative min-w-[150px]">
-                        <select id="sortSelect" onchange="applyClientFilters()" class="w-full appearance-none bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 cursor-pointer transition-all">
-                            <option value="recent">Mais Recentes</option>
-                            <option value="price_asc">Menor Preço</option>
-                            <option value="price_desc">Maior Preço</option>
-                            <option value="name">Ordem Alfabética</option>
-                        </select>
-                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-zinc-400">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                            </svg>
-                        </div>
-                    </div>
-
-                    <!-- Faixa Máxima de Preço -->
-                    <div class="relative min-w-[130px]">
-                        <select id="priceSelect" onchange="applyClientFilters()" class="w-full appearance-none bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 cursor-pointer transition-all">
-                            <option value="all">Qualquer Preço</option>
-                            <option value="1000">Até R$ 1.000</option>
-                            <option value="1400">Até R$ 1.400</option>
-                            <option value="1800">Até R$ 1.800</option>
-                            <option value="2500">Até R$ 2.500</option>
-                        </select>
-                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-zinc-400">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                            </svg>
-                        </div>
-                    </div>
-
-                    <!-- View Switcher Tabs -->
-                    <div class="inline-flex p-1 bg-zinc-100 dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800">
-                        <button onclick="switchView('split', this)" class="view-tab-btn active px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-white bg-brand-600 shadow-sm">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
-                            </svg>
-                            <span>Dividido</span>
-                        </button>
-                        <button onclick="switchView('grid', this)" class="view-tab-btn px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
-                            </svg>
-                            <span>Cards</span>
-                        </button>
-                        <button onclick="switchView('map', this)" class="view-tab-btn px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
-                            </svg>
-                            <span>Mapa</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Neighborhood Filter Quick Chips -->
-            <div class="pt-2 border-t border-zinc-200/80 dark:border-zinc-800/80 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none text-xs">
-                <span class="text-zinc-400 font-medium whitespace-nowrap pl-0.5">Bairros:</span>
-                <button onclick="filterByChip('', this)" class="chip-btn active px-3 py-1 rounded-full font-medium transition-all bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 whitespace-nowrap">
-                    Todos
-                </button>
-                <button onclick="filterByChip('Boa Viagem', this)" class="chip-btn px-3 py-1 rounded-full font-medium transition-all bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
-                    Boa Viagem
-                </button>
-                <button onclick="filterByChip('Várzea', this)" class="chip-btn px-3 py-1 rounded-full font-medium transition-all bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
-                    Várzea
-                </button>
-                <button onclick="filterByChip('Casa Amarela', this)" class="chip-btn px-3 py-1 rounded-full font-medium transition-all bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
-                    Casa Amarela
-                </button>
-                <button onclick="filterByChip('Passarinho', this)" class="chip-btn px-3 py-1 rounded-full font-medium transition-all bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
-                    Passarinho
-                </button>
-                <button onclick="filterByChip('Iputinga', this)" class="chip-btn px-3 py-1 rounded-full font-medium transition-all bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
-                    Iputinga
-                </button>
-                <button onclick="filterByChip('Encruzilhada', this)" class="chip-btn px-3 py-1 rounded-full font-medium transition-all bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
-                    Encruzilhada
-                </button>
-                <button onclick="filterByChip('Pina', this)" class="chip-btn px-3 py-1 rounded-full font-medium transition-all bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
-                    Pina
-                </button>
-                <button onclick="filterByChip('Madalena', this)" class="chip-btn px-3 py-1 rounded-full font-medium transition-all bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
-                    Madalena
-                </button>
-                <button onclick="filterByChip('Imbiribeira', this)" class="chip-btn px-3 py-1 rounded-full font-medium transition-all bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
-                    Imbiribeira
-                </button>
-            </div>
-        </section>
-
-        <!-- Dynamic Counter Display -->
-        <div class="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 px-1">
-            <span>Exibindo <strong id="visibleCount" class="text-zinc-900 dark:text-white font-bold">{{ houses|length }}</strong> de {{ total }} imóveis</span>
-            <span id="activeFilterLabel" class="hidden text-brand-600 dark:text-brand-400 font-medium">Filtro ativo</span>
-        </div>
-
-        <!-- VIEW 1: Split View (Map + List Side-by-Side) [DEFAULT] -->
-        <div id="view-split" class="content-view-section block">
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[720px]">
-                
-                <!-- Left: Interactive Map Slot -->
-                <div class="lg:col-span-6 xl:col-span-7 h-[360px] lg:h-full rounded-2xl overflow-hidden border border-zinc-200/80 dark:border-zinc-800/80 shadow-md relative" id="split-map-host">
-                    <div id="map-core" class="w-full h-full bg-zinc-100 dark:bg-zinc-900"></div>
-                </div>
-
-                <!-- Right: Scrollable Card List -->
-                <div class="lg:col-span-6 xl:col-span-5 h-[360px] lg:h-full overflow-y-auto pr-1 space-y-3.5" id="split-list-container">
-                    {% if houses %}
-                        {% for house in houses %}
-                        <article class="house-item-card glass-card p-3.5 cursor-pointer group" id="card-split-{{ house.id }}" data-id="{{ house.id }}" data-title="{{ house.title }}" data-location="{{ house.location }}" data-price="{{ house.price or 0 }}" onclick="focusHouseOnMap({{ house.id }}, {{ house.latitude or -8.0578 }}, {{ house.longitude or -34.8829 }})">
-                            <div class="flex gap-3.5">
-                                <!-- Thumbnail -->
-                                <div class="w-28 h-24 sm:w-32 sm:h-24 rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 flex-shrink-0 relative">
-                                    {% if house.image_url %}
-                                        <img src="{{ house.image_url }}" alt="{{ house.title }}" referrerpolicy="no-referrer" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=400&q=80';">
-                                    {% else %}
-                                        <div class="w-full h-full flex items-center justify-center text-zinc-400">
-                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                        </div>
-                                    {% endif %}
-                                    <span class="absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-black/60 text-white backdrop-blur-sm">
-                                        📍 {{ (house.location or "Recife").split(",")[-1].strip() }}
-                                    </span>
-                                </div>
-
-                                <!-- Details -->
-                                <div class="flex-1 flex flex-col justify-between min-w-0">
-                                    <div>
-                                        <div class="flex items-center justify-between gap-1">
-                                            <span class="text-base sm:text-lg font-extrabold text-emerald-600 dark:text-emerald-400">
-                                                {{ house.price_formatted or "Sob Consulta" }}
-                                            </span>
-                                            {% if house.notified_telegram %}
-                                                <span class="text-sky-500" title="Notificado no Telegram">
-                                                    <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295-.002 0-.003 0-.005 0l.213-3.054 5.56-5.022c.24-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.458c.538-.196 1.006.128.832.943z"/></svg>
-                                                </span>
-                                            {% endif %}
-                                        </div>
-                                        <h3 class="text-xs sm:text-sm font-semibold text-zinc-900 dark:text-white line-clamp-2 mt-0.5" title="{{ house.title }}">
-                                            {{ house.title }}
-                                        </h3>
-                                    </div>
-
-                                    <div class="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-zinc-100 dark:border-zinc-800 text-[11px] text-zinc-500 dark:text-zinc-400">
-                                        <span class="truncate">📍 {{ house.location or "Recife, PE" }}</span>
-                                        <a href="{{ house.url }}" target="_blank" rel="noopener" onclick="event.stopPropagation();" class="inline-flex items-center gap-1 font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 shrink-0">
-                                            <span>OLX</span>
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </article>
-                        {% endfor %}
-                    {% else %}
-                        <div class="h-full flex flex-col items-center justify-center p-8 text-center glass-card">
-                            <div class="w-12 h-12 rounded-2xl bg-purple-100 dark:bg-purple-950/60 text-brand-600 flex items-center justify-center mb-3">
-                                🏠
-                            </div>
-                            <h3 class="text-base font-bold text-zinc-900 dark:text-white">Nenhum imóvel capturado</h3>
-                            <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1 max-w-xs">Clique em <strong>Sincronizar</strong> acima para consultar anúncios na OLX Brasil.</p>
-                        </div>
-                    {% endif %}
                 </div>
             </div>
         </div>
 
-        <!-- VIEW 2: Grid View (Cards Responsive Grid) -->
-        <div id="view-grid" class="content-view-section hidden">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5" id="grid-cards-container">
+        <!-- Barra de Controles Rápidos -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+            
+            <!-- Busca -->
+            <div class="relative w-full lg:max-w-md group">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400 group-focus-within:text-neutral-900 dark:group-focus-within:text-white transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                </div>
+                <input type="text" id="searchInput" placeholder="Buscar por título ou bairro..." class="w-full pl-9 pr-12 py-2 bg-white dark:bg-[#141417] border border-neutral-200/80 dark:border-white/[0.08] rounded-xl text-[13px] text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-300 dark:focus:ring-neutral-600 shadow-sm transition-all" autocomplete="off">
+                <div class="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none">
+                    <span class="kbd">⌘K</span>
+                </div>
+            </div>
+
+            <!-- Filtros Chips & Sort -->
+            <div class="flex items-center gap-2 overflow-x-auto w-full lg:w-auto no-scrollbar pb-1 lg:pb-0">
+                <div id="filterChips" class="flex items-center gap-2 bg-neutral-100/50 dark:bg-white/[0.02] p-1 rounded-xl border border-neutral-200/50 dark:border-white/[0.04] shrink-0">
+                    <button data-filter="all" class="chip active px-3 py-1.5 rounded-lg text-[12px] font-medium bg-white dark:bg-[#202023] text-neutral-900 dark:text-white shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06] transition-all focus:outline-none">Todos</button>
+                    <button data-filter="below-avg" class="chip px-3 py-1.5 rounded-lg text-[12px] font-medium text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-all whitespace-nowrap focus:outline-none">Abaixo da Média</button>
+                    <button data-filter="with-photos" class="chip px-3 py-1.5 rounded-lg text-[12px] font-medium text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-all whitespace-nowrap focus:outline-none">Com Fotos</button>
+                    <button data-filter="recent" class="chip px-3 py-1.5 rounded-lg text-[12px] font-medium text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-all whitespace-nowrap focus:outline-none">Mais Recentes</button>
+                </div>
+
+                <div class="h-6 w-px bg-neutral-200 dark:bg-white/10 mx-1 shrink-0"></div>
+
+                <div class="relative shrink-0">
+                    <select id="sortSelect" class="appearance-none bg-white dark:bg-[#141417] border border-neutral-200/80 dark:border-white/[0.08] rounded-xl pl-3 pr-8 py-1.5 text-[12px] font-medium text-neutral-700 dark:text-neutral-300 focus:outline-none focus:ring-1 focus:ring-neutral-300 dark:focus:ring-neutral-600 shadow-sm cursor-pointer transition-all">
+                        <option value="recent">Mais Recentes</option>
+                        <option value="price_asc">Menor Preço</option>
+                        <option value="price_desc">Maior Preço</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-neutral-400">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grid de Cards -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6">
+            <div id="cardsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                 {% if houses %}
                     {% for house in houses %}
-                    <article class="house-item-card glass-card overflow-hidden flex flex-col group" id="card-grid-{{ house.id }}" data-id="{{ house.id }}" data-title="{{ house.title }}" data-location="{{ house.location }}" data-price="{{ house.price or 0 }}">
+                    <!-- Variables processing -->
+                    {% set has_photo = "true" if house.image_url else "false" %}
+                    
+                    <article class="house-card group rounded-2xl overflow-hidden surface-card surface-ring surface-hover flex flex-col"
+                             data-id="{{ house.id }}"
+                             data-region-id="{{ house.search_query_id or '' }}"
+                             data-price="{{ house.price_val or house.price or 0 }}"
+                             data-title="{{ (house.title or '') | lower }}"
+                             data-location="{{ (house.location or '') | lower }}"
+                             data-has-photo="{{ has_photo }}"
+                             data-date-ts="{{ house.created_at.timestamp() if house.created_at else 0 }}">
                         
-                        <!-- Image Container -->
-                        <div class="relative w-full aspect-video bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
+                        <!-- Header Imagem 4:3 -->
+                        <div class="relative w-full aspect-[4/3] bg-neutral-100 dark:bg-[#1A1A1E] overflow-hidden">
                             {% if house.image_url %}
-                                <img src="{{ house.image_url }}" alt="{{ house.title }}" referrerpolicy="no-referrer" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=600&q=80';">
+                                <img src="{{ house.image_url }}" alt="Foto do Imóvel" loading="lazy" decoding="async" referrerpolicy="no-referrer" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out" onerror="this.onerror=null; this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden');">
+                                <div class="hidden absolute inset-0 bg-gradient-to-br from-neutral-800 to-neutral-900 flex items-center justify-center">
+                                    <svg class="w-8 h-8 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/></svg>
+                                </div>
                             {% else %}
-                                <div class="w-full h-full flex flex-col items-center justify-center text-zinc-400 bg-zinc-100 dark:bg-zinc-800">
-                                    <svg class="w-8 h-8 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/></svg>
-                                    <span class="text-xs mt-1 text-zinc-500">Sem Foto</span>
+                                <div class="absolute inset-0 bg-gradient-to-br from-neutral-800 to-neutral-900 flex items-center justify-center">
+                                    <svg class="w-8 h-8 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/></svg>
                                 </div>
                             {% endif %}
 
-                            <!-- Floating Badges -->
-                            <div class="absolute top-2.5 left-2.5 flex flex-wrap gap-1.5">
-                                <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-black/60 text-white backdrop-blur-md shadow-sm">
-                                    📍 {{ (house.location or "Recife").split(",")[-1].strip() }}
-                                </span>
-                            </div>
-
-                            <div class="absolute top-2.5 right-2.5">
-                                {% if house.notified_telegram %}
-                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/90 text-white backdrop-blur-md shadow-sm">
-                                        ✓ Telegram
-                                    </span>
-                                {% else %}
-                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/90 text-zinc-950 backdrop-blur-md shadow-sm">
-                                        ⏳ Pendente
-                                    </span>
-                                {% endif %}
+                            <!-- Overlay Top Pills -->
+                            <div class="absolute top-3 left-3 right-3 flex justify-between items-start pointer-events-none">
+                                <div class="backdrop-blur-md bg-black/40 text-white text-[10px] font-medium px-2.5 py-1 rounded-full border border-white/10 shadow-sm truncate max-w-[70%]">
+                                    📍 {{ (house.location or "Brasil").split(",")[-1].strip() }}
+                                </div>
+                                <div class="recent-badge hidden backdrop-blur-md bg-emerald-500/90 text-white text-[10px] font-bold tracking-wide px-2 py-1 rounded-full shadow-sm">
+                                    NOVO
+                                </div>
                             </div>
                         </div>
 
                         <!-- Card Body -->
-                        <div class="p-4 flex-1 flex flex-col justify-between space-y-3">
+                        <div class="p-4 flex-1 flex flex-col justify-between space-y-4">
                             <div>
-                                <div class="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">
-                                    {{ house.price_formatted or "Sob Consulta" }}
+                                <div class="text-xl font-semibold tracking-tight tabular-nums text-neutral-900 dark:text-white">
+                                    {{ house.price_formatted or house.price_str or "Sob Consulta" }}
                                 </div>
-                                <h2 class="text-sm font-semibold text-zinc-900 dark:text-white line-clamp-2 mt-1" title="{{ house.title }}">
+                                <h2 class="text-sm text-neutral-600 dark:text-neutral-300 font-normal mt-1 leading-snug line-clamp-2" title="{{ house.title }}">
                                     {{ house.title }}
                                 </h2>
-                                <div class="mt-2 text-xs text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
-                                    <svg class="w-3.5 h-3.5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                    <span class="truncate">{{ house.location or "Recife, PE" }}</span>
-                                </div>
                             </div>
 
-                            <!-- Card Footer -->
-                            <div class="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex items-center gap-2">
-                                <a href="{{ house.url }}" target="_blank" rel="noopener noreferrer" class="flex-1 text-center py-2 px-3 text-xs font-semibold text-white bg-gradient-to-r from-brand-olx to-indigo-600 hover:from-purple-700 hover:to-indigo-700 rounded-xl transition shadow-sm active:scale-95">
-                                    Ver na OLX ↗
-                                </a>
-                                <button onclick="focusHouseFromGrid({{ house.id }}, {{ house.latitude or -8.0578 }}, {{ house.longitude or -34.8829 }})" title="Ver no Mapa" class="p-2 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 transition active:scale-95">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-                                </button>
+                            <div class="flex items-center justify-between text-[11px] text-neutral-500 dark:text-neutral-400">
+                                <div class="flex items-center gap-1">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <span>{{ house.created_at.strftime('%d/%m %H:%M') if house.created_at else "Recente" }}</span>
+                                </div>
                             </div>
+                        </div>
+
+                        <!-- Footer Action -->
+                        <div class="px-4 pb-4">
+                            <a href="{{ house.url }}" target="_blank" rel="noopener" class="w-full py-2 rounded-xl text-center text-xs font-medium flex items-center justify-center gap-1.5 border border-neutral-200 dark:border-white/[0.08] text-neutral-900 dark:text-white group-hover:bg-neutral-900 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-neutral-900 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white">
+                                Ver na OLX
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                            </a>
                         </div>
                     </article>
                     {% endfor %}
                 {% else %}
-                    <div class="col-span-full py-16 text-center glass-card p-8">
-                        <div class="w-16 h-16 rounded-3xl bg-purple-100 dark:bg-purple-950/60 text-brand-600 flex items-center justify-center mx-auto mb-4 text-2xl">
-                            🏡
+                    <!-- Empty State -->
+                    <div class="col-span-full py-24 flex flex-col items-center justify-center text-center">
+                        <div class="w-16 h-16 rounded-2xl bg-neutral-100 dark:bg-white/5 flex items-center justify-center mb-4 text-neutral-400 ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/></svg>
                         </div>
-                        <h3 class="text-lg font-bold text-zinc-900 dark:text-white">Nenhum imóvel disponível</h3>
-                        <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-1 max-w-md mx-auto">
-                            Os anúncios capturados pela rotina de monitoramento aparecerão automaticamente aqui.
-                        </p>
+                        <h3 class="text-sm font-semibold text-neutral-900 dark:text-white tracking-tight">Nenhum imóvel disponível</h3>
+                        <p class="text-xs text-neutral-500 mt-1 max-w-sm">Tente limpar os filtros ou selecionar outra região no menu superior.</p>
                     </div>
                 {% endif %}
             </div>
         </div>
-
-        <!-- VIEW 3: Full Map View -->
-        <div id="view-map" class="content-view-section hidden">
-            <div class="h-[750px] rounded-2xl overflow-hidden border border-zinc-200/80 dark:border-zinc-800/80 shadow-lg relative" id="full-map-host">
-                <!-- map-core is dynamically attached here when viewing full map -->
-            </div>
-        </div>
     </main>
 
-    <!-- Footer com Créditos do Autor -->
-    <footer class="border-t border-zinc-200/80 dark:border-zinc-800/80 bg-white/60 dark:bg-zinc-950/60 backdrop-blur-md mt-12 py-8 transition-colors duration-200">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-500 dark:text-zinc-400">
-            <!-- Left Branding & Author -->
-            <div class="flex items-center gap-2">
-                <span class="font-bold text-zinc-900 dark:text-white">OLX Radar</span>
-                <span class="text-zinc-300 dark:text-zinc-700">•</span>
-                <span>Desenvolvido com dedicação por <strong class="text-zinc-800 dark:text-zinc-200 font-semibold">Carlos Silva</strong></span>
+    <!-- Modal Onboarding -->
+    <div id="onboardingModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm opacity-0 invisible transition-all duration-300">
+        <div class="bg-white dark:bg-[#141417] p-6 sm:p-8 rounded-3xl shadow-2xl surface-ring w-full max-w-lg transform scale-95 transition-transform duration-300 mx-4" id="onboardingContent">
+            <div class="text-center mb-8">
+                <div class="w-12 h-12 rounded-xl bg-neutral-100 dark:bg-white/5 mx-auto flex items-center justify-center mb-4 ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
+                    <svg class="w-6 h-6 text-neutral-900 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <h2 class="text-xl font-semibold tracking-tight text-neutral-900 dark:text-white">Escolha sua Região</h2>
+                <p class="text-sm text-neutral-500 mt-2">Selecione uma área para começar a monitorar oportunidades.</p>
             </div>
-
-            <!-- Social Links & Profiles -->
-            <div class="flex flex-wrap items-center gap-2.5">
-                <!-- GitHub -->
-                <a href="https://github.com/carloosf" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:text-purple-600 dark:hover:text-purple-400 font-medium transition shadow-sm" title="GitHub: /carloosf">
-                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                        <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
-                    </svg>
-                    <span>/carloosf</span>
-                </a>
-
-                <!-- LinkedIn -->
-                <a href="https://linkedin.com/in/carloosf" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition shadow-sm" title="LinkedIn: carloosf">
-                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                        <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
-                    </svg>
-                    <span>LinkedIn</span>
-                </a>
-
-                <!-- Instagram -->
-                <a href="https://instagram.com/carloosf.s" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:text-pink-600 dark:hover:text-pink-400 font-medium transition shadow-sm" title="Instagram: @carloosf.s">
-                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-                    </svg>
-                    <span>@carloosf.s</span>
-                </a>
+            
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                {% if regions %}
+                    {% for r in regions %}
+                    <button onclick="selectRegion('{{ r.id }}', '{{ r.name }}'); closeOnboarding();" class="p-4 rounded-2xl border border-neutral-200/80 dark:border-white/[0.08] hover:border-neutral-400 dark:hover:border-white/20 hover:bg-neutral-50 dark:hover:bg-white/[0.02] transition-all text-left group focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white">
+                        <div class="text-sm font-semibold text-neutral-900 dark:text-white truncate">{{ r.name.split('-')[0] | truncate(15) }}</div>
+                        <div class="text-[10px] text-neutral-400 mt-1 uppercase tracking-wider group-hover:text-emerald-500 transition-colors">Monitorar ↗</div>
+                    </button>
+                    {% endfor %}
+                {% endif %}
+                <button onclick="selectRegion('all', 'Todas as Regiões'); closeOnboarding();" class="p-4 rounded-2xl border border-neutral-200/80 dark:border-white/[0.08] bg-neutral-900 dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-all text-left col-span-2 text-center group mt-2 focus:outline-none focus:ring-2 focus:ring-neutral-400">
+                    <div class="text-sm font-semibold text-white dark:text-neutral-900">Ver Todas as Regiões</div>
+                </button>
             </div>
-        </div>
-    </footer>
-
-
-    <!-- Floating Toast Notification Container -->
-    <div id="toast" class="fixed bottom-5 right-5 z-50 transform transition-all duration-300 translate-y-20 opacity-0 pointer-events-none">
-        <div class="flex items-center gap-3 px-4 py-3 bg-zinc-900/95 dark:bg-white/95 text-white dark:text-zinc-900 rounded-2xl shadow-2xl border border-zinc-800 dark:border-zinc-200 backdrop-blur-xl">
-            <span id="toastIcon" class="text-emerald-400 dark:text-emerald-600 font-bold text-lg">✓</span>
-            <div class="text-xs sm:text-sm font-medium" id="toastMessage">Operação realizada com sucesso!</div>
         </div>
     </div>
 
-    <!-- JSON Dados Embutidos para o Motor de Mapas -->
-    <script id="houses-json" type="application/json">
-        [
-            {% for h in houses %}
-            {
-                "id": {{ h.id }},
-                "title": {{ h.title|tojson }},
-                "price": {{ (h.price_formatted or "Sob Consulta")|tojson }},
-                "price_raw": {{ h.price or 0 }},
-                "location": {{ (h.location or "Recife")|tojson }},
-                "image_url": {{ (h.image_url or "https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=400&q=80")|tojson }},
-                "url": {{ h.url|tojson }},
-                "lat": {{ h.latitude or -8.0578 }},
-                "lng": {{ h.longitude or -34.8829 }},
-                "notified": {{ 'true' if h.notified_telegram else 'false' }}
-            }{% if not loop.last %},{% endif %}
-            {% endfor %}
-        ]
-    </script>
-
-    <!-- Vanilla JS Application Logic -->
+    <!-- Vanilla JS Logic -->
     <script>
-        const housesData = JSON.parse(document.getElementById('houses-json').textContent || '[]');
-        let activeMap = null;
-        const markersMap = {};
-        let activeChip = '';
+        // Constants & State
+        const REGIONS = {
+            'all': 'Todas as Regiões',
+            {% if regions %}
+            {% for r in regions %}
+            '{{ r.id }}': '{{ r.name }}',
+            {% endfor %}
+            {% endif %}
+        };
+        
+        let currentRegion = localStorage.getItem('selected_region_id') || null;
+        let searchTimeout = null;
 
-        // Estilos Rápidos e Otimizados Carto Positron / Voyager (Sem API Key, Baixíssima Latência)
-        function getMapStyle() {
-            const isDark = document.documentElement.classList.contains('dark');
-            const tileUrl = isDark 
-                ? 'https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png'
-                : 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
-
-            return {
-                version: 8,
-                sources: {
-                    'carto-tiles': {
-                        type: 'raster',
-                        tiles: [
-                            tileUrl.replace('basemaps.', 'a.basemaps.'),
-                            tileUrl.replace('basemaps.', 'b.basemaps.'),
-                            tileUrl.replace('basemaps.', 'c.basemaps.'),
-                            tileUrl.replace('basemaps.', 'd.basemaps.')
-                        ],
-                        tileSize: 256,
-                        attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
-                    }
-                },
-                layers: [
-                    {
-                        id: 'carto-tiles-layer',
-                        type: 'raster',
-                        source: 'carto-tiles',
-                        minzoom: 0,
-                        maxzoom: 19
-                    }
-                ]
-            };
-        }
-
-        // Geração Otimizada de Círculo Geográfico Aproximado (16 vértices)
-        function createGeoJSONCircle(center, radiusInMeters, points = 16) {
-            const coords = { latitude: center[1], longitude: center[0] };
-            const km = radiusInMeters / 1000;
-            const ret = [];
-            const distanceX = km / (111.320 * Math.cos(coords.latitude * Math.PI / 180));
-            const distanceY = km / 110.574;
-
-            for (let i = 0; i < points; i++) {
-                const theta = (i / points) * (2 * Math.PI);
-                const x = distanceX * Math.cos(theta);
-                const y = distanceY * Math.sin(theta);
-                ret.push([coords.longitude + x, coords.latitude + y]);
-            }
-            ret.push(ret[0]);
-            return {
-                type: 'Feature',
-                properties: {},
-                geometry: {
-                    type: 'Polygon',
-                    coordinates: [ret]
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check recency logic purely on client to avoid jinja context issues
+            const nowMs = Date.now();
+            document.querySelectorAll('.house-card').forEach(card => {
+                const ts = parseFloat(card.dataset.dateTs) * 1000;
+                const isRecent = ts > 0 && (nowMs - ts) < 86400000;
+                card.dataset.isRecent = isRecent;
+                if (isRecent) {
+                    const badge = card.querySelector('.recent-badge');
+                    if (badge) badge.classList.remove('hidden');
                 }
-            };
-        }
-
-        // Inicialização de Instância ÚNICA de Alta Performance
-        function initMap() {
-            const mapContainer = document.getElementById('map-core');
-            if (!mapContainer || activeMap) return;
-
-            const defaultCenter = [-34.8950, -8.0578]; // Recife Centro
-            const defaultZoom = 12.2;
-
-            activeMap = new maplibregl.Map({
-                container: 'map-core',
-                style: getMapStyle(),
-                center: defaultCenter,
-                zoom: defaultZoom,
-                fadeDuration: 0,
-                maxTileCacheSize: 250,
-                renderWorldCopies: false,
-                trackResize: true
             });
 
-            activeMap.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
-
-            activeMap.on('load', () => {
-                setupMapLayersAndMarkers();
-            });
-        }
-
-        // Popup HTML com Estilo Moderno Tailwind
-        function createPopupHTML(h) {
-            return `
-                <div class="w-64 bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden shadow-2xl border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 font-sans">
-                    <div class="relative w-full h-32 bg-zinc-800 overflow-hidden">
-                        <img src="${h.image_url}" alt="${h.title}" referrerpolicy="no-referrer" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=400&q=80'">
-                        <span class="absolute bottom-2 left-2 px-2 py-0.5 rounded text-[10px] font-bold bg-black/60 text-white backdrop-blur-md">
-                            📍 ${h.location.split(',').pop().trim()}
-                        </span>
-                    </div>
-                    <div class="p-3 space-y-1.5">
-                        <div class="text-base font-extrabold text-emerald-600 dark:text-emerald-400">${h.price}</div>
-                        <div class="text-xs font-semibold text-zinc-800 dark:text-zinc-200 line-clamp-2 leading-tight">${h.title}</div>
-                        <div class="text-[11px] text-zinc-400">⭕ Área aproximada no bairro</div>
-                        <a href="${h.url}" target="_blank" rel="noopener" class="mt-2 block text-center py-1.5 px-3 text-xs font-semibold text-white bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg hover:opacity-95 transition">
-                            Abrir Anúncio na OLX ↗
-                        </a>
-                    </div>
-                </div>
-            `;
-        }
-
-        function setupMapLayersAndMarkers() {
-            if (!activeMap || !housesData || housesData.length === 0) return;
-
-            // 1. Círculos de Raio GeoJSON em Lote (400m)
-            const circleFeatures = housesData.filter(h => h.lat && h.lng).map(h => createGeoJSONCircle([h.lng, h.lat], 400));
+            if (!currentRegion || !REGIONS[currentRegion]) {
+                showOnboarding();
+            } else {
+                setRegionUI(currentRegion, REGIONS[currentRegion]);
+            }
             
-            if (circleFeatures.length > 0) {
-                activeMap.addSource('all-circles-source', {
-                    type: 'geojson',
-                    data: { type: 'FeatureCollection', features: circleFeatures }
-                });
-
-                activeMap.addLayer({
-                    id: 'all-circles-fill',
-                    type: 'fill',
-                    source: 'all-circles-source',
-                    paint: {
-                        'fill-color': '#7c3aed',
-                        'fill-opacity': 0.12
-                    }
-                });
-
-                activeMap.addLayer({
-                    id: 'all-circles-line',
-                    type: 'line',
-                    source: 'all-circles-source',
-                    paint: {
-                        'line-color': '#8b5cf6',
-                        'line-width': 1.2,
-                        'line-dasharray': [2, 3]
-                    }
-                });
-            }
-
-            // 2. Marcadores com Hardware Acceleration
-            const bounds = new maplibregl.LngLatBounds();
-
-            housesData.forEach(h => {
-                if (h.lat && h.lng) {
-                    const el = document.createElement('div');
-                    el.className = 'custom-map-marker inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold text-white bg-gradient-to-r from-brand-olx to-indigo-600 border-2 border-white dark:border-zinc-900 shadow-md select-none';
-                    el.style.willChange = 'transform';
-                    el.innerHTML = `<span>🏠</span><span>${h.price}</span>`;
-
-                    const popup = new maplibregl.Popup({ offset: 15, maxWidth: '280px', closeButton: true }).setHTML(createPopupHTML(h));
-                    const marker = new maplibregl.Marker({ element: el })
-                        .setLngLat([h.lng, h.lat])
-                        .setPopup(popup)
-                        .addTo(activeMap);
-
-                    el.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        highlightSelectedCard(h.id);
+            // Force apply filters on first load to calculate stats
+            applyFilters();
+            
+            // Setup Listeners
+            document.getElementById('searchInput').addEventListener('input', () => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(applyFilters, 150);
+            });
+            
+            document.getElementById('sortSelect').addEventListener('change', applyFilters);
+            
+            document.querySelectorAll('.chip').forEach(chip => {
+                chip.addEventListener('click', (e) => {
+                    document.querySelectorAll('.chip').forEach(c => {
+                        c.classList.remove('active', 'bg-white', 'dark:bg-[#202023]', 'text-neutral-900', 'dark:text-white', 'shadow-sm', 'ring-1', 'ring-black/[0.04]', 'dark:ring-white/[0.06]');
+                        c.classList.add('text-neutral-500');
                     });
-
-                    markersMap[h.id] = marker;
-                    bounds.extend([h.lng, h.lat]);
-                }
-            });
-
-            if (!bounds.isEmpty()) {
-                activeMap.fitBounds(bounds, { padding: 40, maxZoom: 14 });
-            }
-        }
-
-        // Foco e Destaque Fluido com easeTo (60fps)
-        function focusHouseOnMap(id, lat, lng) {
-            highlightSelectedCard(id);
-
-            if (activeMap && lat && lng) {
-                activeMap.easeTo({
-                    center: [lng, lat],
-                    zoom: 14.5,
-                    duration: 350,
-                    essential: true
+                    
+                    const btn = e.target;
+                    btn.classList.add('active', 'bg-white', 'dark:bg-[#202023]', 'text-neutral-900', 'dark:text-white', 'shadow-sm', 'ring-1', 'ring-black/[0.04]', 'dark:ring-white/[0.06]');
+                    btn.classList.remove('text-neutral-500');
+                    
+                    applyFilters();
                 });
-                const m = markersMap[id];
-                if (m) {
-                    m.togglePopup();
-                }
-            }
-        }
-
-        function focusHouseFromGrid(id, lat, lng) {
-            const splitTabBtn = document.querySelectorAll('.view-tab-btn')[0];
-            switchView('split', splitTabBtn);
-            setTimeout(() => {
-                focusHouseOnMap(id, lat, lng);
-            }, 100);
-        }
-
-        function highlightSelectedCard(id) {
-            document.querySelectorAll('.house-item-card').forEach(c => {
-                c.classList.remove('ring-2', 'ring-brand-500', 'bg-purple-50/50', 'dark:bg-purple-950/20');
             });
 
-            const card = document.getElementById(`card-split-${id}`) || document.getElementById(`card-grid-${id}`);
-            if (card) {
-                card.classList.add('ring-2', 'ring-brand-500', 'bg-purple-50/50', 'dark:bg-purple-950/20');
-                card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }
-        }
-
-        // Filtro em Tempo Real (Client-Side)
-        function applyClientFilters() {
-            const query = (document.getElementById('filterSearch').value || '').toLowerCase().trim();
-            const maxPriceVal = document.getElementById('priceSelect').value;
-            const sortVal = document.getElementById('sortSelect').value;
-            const clearBtn = document.getElementById('btnClearSearch');
-
-            if (clearBtn) {
-                clearBtn.classList.toggle('hidden', query.length === 0);
-            }
-
-            const cards = Array.from(document.querySelectorAll('.house-item-card'));
-            let visible = 0;
-
-            cards.forEach(card => {
-                const title = (card.getAttribute('data-title') || '').toLowerCase();
-                const loc = (card.getAttribute('data-location') || '').toLowerCase();
-                const price = parseFloat(card.getAttribute('data-price') || '0');
-                const id = card.getAttribute('data-id');
-
-                let matchSearch = true;
-                if (query) {
-                    matchSearch = title.includes(query) || loc.includes(query);
-                }
-
-                let matchChip = true;
-                if (activeChip) {
-                    matchChip = loc.includes(activeChip.toLowerCase());
-                }
-
-                let matchPrice = true;
-                if (maxPriceVal !== 'all') {
-                    const maxP = parseFloat(maxPriceVal);
-                    matchPrice = price > 0 && price <= maxP;
-                }
-
-                const shouldShow = matchSearch && matchChip && matchPrice;
-                card.style.display = shouldShow ? '' : 'none';
-
-                if (shouldShow) visible++;
-
-                // Oculta/Exibe marcadores no mapa
-                const marker = markersMap[id];
-                if (marker) {
-                    marker.getElement().style.display = shouldShow ? '' : 'none';
+            // Keyboard shortcut (⌘K)
+            document.addEventListener('keydown', (e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                    e.preventDefault();
+                    document.getElementById('searchInput').focus();
                 }
             });
 
-            const splitCardsCount = document.querySelectorAll('#split-list-container .house-item-card').length;
-            const gridCardsCount = document.querySelectorAll('#grid-cards-container .house-item-card').length;
-            const divisor = (splitCardsCount > 0 && gridCardsCount > 0) ? 2 : 1;
-            document.getElementById('visibleCount').innerText = Math.round(visible / divisor);
-
-            // Ordenação dos containers
-            sortContainer(document.getElementById('split-list-container'), sortVal);
-            sortContainer(document.getElementById('grid-cards-container'), sortVal);
-        }
-
-        function sortContainer(container, sortBy) {
-            if (!container) return;
-            const items = Array.from(container.children).filter(el => el.classList.contains('house-item-card'));
-
-            items.sort((a, b) => {
-                const pA = parseFloat(a.getAttribute('data-price') || '0');
-                const pB = parseFloat(b.getAttribute('data-price') || '0');
-                const idA = parseInt(a.getAttribute('data-id') || '0');
-                const idB = parseInt(b.getAttribute('data-id') || '0');
-                const tA = (a.getAttribute('data-title') || '').toLowerCase();
-                const tB = (b.getAttribute('data-title') || '').toLowerCase();
-
-                if (sortBy === 'price_asc') return (pA || 999999) - (pB || 999999);
-                if (sortBy === 'price_desc') return pB - pA;
-                if (sortBy === 'name') return tA.localeCompare(tB);
-                return idB - idA; // recent default
-            });
-
-            items.forEach(item => container.appendChild(item));
-        }
-
-        function clearSearch() {
-            document.getElementById('filterSearch').value = '';
-            applyClientFilters();
-        }
-
-        function filterByChip(neighborhood, btn) {
-            document.querySelectorAll('.chip-btn').forEach(b => {
-                b.classList.remove('bg-zinc-900', 'dark:bg-white', 'text-white', 'dark:text-zinc-900');
-                b.classList.add('bg-zinc-100', 'dark:bg-zinc-800', 'text-zinc-600', 'dark:text-zinc-300');
-            });
-
-            btn.classList.remove('bg-zinc-100', 'dark:bg-zinc-800', 'text-zinc-600', 'dark:text-zinc-300');
-            btn.classList.add('bg-zinc-900', 'dark:bg-white', 'text-white', 'dark:text-zinc-900');
-
-            activeChip = neighborhood;
-            applyClientFilters();
-        }
-
-        // Alternância Suave de Abas de Visualização (Move o Container do Mapa Preservando WebGL)
-        function switchView(viewName, btn) {
-            document.querySelectorAll('.view-tab-btn').forEach(b => {
-                b.classList.remove('active', 'text-white', 'bg-brand-600', 'shadow-sm');
-                b.classList.add('text-zinc-600', 'dark:text-zinc-400');
-            });
-
-            if (btn) {
-                btn.classList.add('active', 'text-white', 'bg-brand-600', 'shadow-sm');
-                btn.classList.remove('text-zinc-600', 'dark:text-zinc-400');
-            }
-
-            document.querySelectorAll('.content-view-section').forEach(sec => sec.classList.add('hidden'));
-            const target = document.getElementById(`view-${viewName}`);
-            if (target) target.classList.remove('hidden');
-
-            const mapCoreEl = document.getElementById('map-core');
-            if (viewName === 'split') {
-                const splitHost = document.getElementById('split-map-host');
-                if (splitHost && mapCoreEl && mapCoreEl.parentElement !== splitHost) {
-                    splitHost.appendChild(mapCoreEl);
+            // Close dropdowns on outside click
+            document.addEventListener('click', (e) => {
+                const regionMenu = document.getElementById('regionDropdownMenu');
+                const supportMenu = document.getElementById('supportPopover');
+                const regionBtn = document.getElementById('regionDropdownBtn');
+                
+                if (regionMenu && !regionMenu.contains(e.target) && !regionBtn.contains(e.target) && !regionMenu.classList.contains('invisible')) {
+                    toggleRegionDropdown();
                 }
-            } else if (viewName === 'map') {
-                const fullHost = document.getElementById('full-map-host');
-                if (fullHost && mapCoreEl && mapCoreEl.parentElement !== fullHost) {
-                    fullHost.appendChild(mapCoreEl);
+                if (supportMenu && !supportMenu.contains(e.target) && !e.target.closest('button[onclick="toggleSupportPopover()"]') && !supportMenu.classList.contains('invisible')) {
+                    toggleSupportPopover();
                 }
-            }
-
-            if (activeMap) {
-                requestAnimationFrame(() => {
-                    activeMap.resize();
-                });
-            }
-        }
-
-        // Dark Mode Toggle
-        function toggleDarkMode() {
-            const html = document.documentElement;
-            const isDark = html.classList.toggle('dark');
-            localStorage.theme = isDark ? 'dark' : 'light';
-
-            if (activeMap) {
-                activeMap.setStyle(getMapStyle());
-                activeMap.once('style.load', () => {
-                    setupMapLayersAndMarkers();
-                });
-            }
-        }
-
-        // Disparo de Sincronização Manual (POST /api/monitor/trigger)
-        async function triggerSync() {
-            const btn = document.getElementById('btnSync');
-            const icon = document.getElementById('syncIcon');
-            const text = document.getElementById('syncText');
-
-            btn.disabled = true;
-            icon.classList.add('animate-spin');
-            text.innerText = 'Buscando...';
-
-            try {
-                const res = await fetch('/api/monitor/trigger?sync_now=true', { method: 'POST' });
-                const data = await res.json();
-                showToast(data.message || 'Sincronização concluída com sucesso!');
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1400);
-            } catch (err) {
-                showToast('Erro ao sincronizar: ' + err.message, true);
-                btn.disabled = false;
-                icon.classList.remove('animate-spin');
-                text.innerText = 'Sincronizar';
-            }
-        }
-
-        // Toast de Feedback
-        function showToast(msg, isError = false) {
-            const toast = document.getElementById('toast');
-            const msgEl = document.getElementById('toastMessage');
-            const iconEl = document.getElementById('toastIcon');
-
-            msgEl.innerText = msg;
-            iconEl.innerText = isError ? '✕' : '✓';
-            iconEl.className = isError ? 'text-red-400 dark:text-red-600 font-bold text-lg' : 'text-emerald-400 dark:text-emerald-600 font-bold text-lg';
-
-            toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
-            setTimeout(() => {
-                toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
-            }, 3500);
-        }
-
-        window.addEventListener('DOMContentLoaded', () => {
-            initMap();
+            });
         });
+
+        // UI Interactions
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+            if (document.documentElement.classList.contains('dark')) {
+                localStorage.theme = 'dark';
+            } else {
+                localStorage.theme = 'light';
+            }
+        }
+
+        function toggleRegionDropdown() {
+            const menu = document.getElementById('regionDropdownMenu');
+            if (menu.classList.contains('invisible')) {
+                menu.classList.remove('invisible', 'opacity-0', 'translate-y-1');
+                menu.classList.add('opacity-100', 'translate-y-0');
+            } else {
+                menu.classList.add('invisible', 'opacity-0', 'translate-y-1');
+                menu.classList.remove('opacity-100', 'translate-y-0');
+            }
+        }
+
+        function toggleSupportPopover() {
+            const menu = document.getElementById('supportPopover');
+            if (menu.classList.contains('invisible')) {
+                menu.classList.remove('invisible', 'opacity-0', 'translate-y-1');
+                menu.classList.add('opacity-100', 'translate-y-0');
+            } else {
+                menu.classList.add('invisible', 'opacity-0', 'translate-y-1');
+                menu.classList.remove('opacity-100', 'translate-y-0');
+            }
+        }
+
+        function copyPix() {
+            navigator.clipboard.writeText('sua-chave-pix-aqui').then(() => {
+                alert('Chave Pix copiada!');
+            });
+        }
+
+        function showOnboarding() {
+            const modal = document.getElementById('onboardingModal');
+            const content = document.getElementById('onboardingContent');
+            modal.classList.remove('invisible', 'opacity-0');
+            modal.classList.add('opacity-100');
+            setTimeout(() => {
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeOnboarding() {
+            const modal = document.getElementById('onboardingModal');
+            const content = document.getElementById('onboardingContent');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('invisible', 'opacity-0');
+                modal.classList.remove('opacity-100');
+            }, 300);
+        }
+
+        function selectRegion(id, name) {
+            currentRegion = id;
+            localStorage.setItem('selected_region_id', id);
+            setRegionUI(id, name || REGIONS[id]);
+            applyFilters();
+            
+            const menu = document.getElementById('regionDropdownMenu');
+            if (!menu.classList.contains('invisible')) {
+                toggleRegionDropdown();
+            }
+        }
+
+        function setRegionUI(id, name) {
+            document.getElementById('activeRegionName').textContent = name || 'Todas as Regiões';
+        }
+
+        // Core Filtering & Sorting
+        function applyFilters() {
+            const term = document.getElementById('searchInput').value.toLowerCase().trim();
+            const activeChip = document.querySelector('.chip.active')?.dataset.filter || 'all';
+            const sortVal = document.getElementById('sortSelect').value;
+            const regionId = currentRegion || 'all';
+            
+            const cardsArray = Array.from(document.querySelectorAll('.house-card'));
+            let visibleCards = [];
+            
+            // First Pass: Filter by Region
+            let regionCards = cardsArray.filter(card => {
+                return regionId === 'all' || card.dataset.regionId === regionId;
+            });
+
+            // Calculate Regional Average Price
+            let sumRegion = 0;
+            let countRegion = 0;
+            regionCards.forEach(card => {
+                const p = parseFloat(card.dataset.price);
+                if (p > 0) {
+                    sumRegion += p;
+                    countRegion++;
+                }
+            });
+            const avgPriceRegion = countRegion > 0 ? (sumRegion / countRegion) : 0;
+
+            // Second Pass: Detailed Filters
+            cardsArray.forEach(card => {
+                const title = card.dataset.title;
+                const loc = card.dataset.location;
+                const rId = card.dataset.regionId;
+                const price = parseFloat(card.dataset.price);
+                const hasPhoto = card.dataset.hasPhoto === 'true';
+                const isRecent = card.dataset.isRecent === 'true';
+
+                let show = true;
+
+                if (regionId !== 'all' && rId !== regionId) show = false;
+                if (term && !title.includes(term) && !loc.includes(term)) show = false;
+                
+                if (activeChip === 'with-photos' && !hasPhoto) show = false;
+                if (activeChip === 'recent' && !isRecent) show = false;
+                if (activeChip === 'below-avg' && (price === 0 || price >= avgPriceRegion)) show = false;
+
+                if (show) {
+                    card.classList.remove('hidden');
+                    card.classList.add('flex');
+                    visibleCards.push(card);
+                } else {
+                    card.classList.add('hidden');
+                    card.classList.remove('flex');
+                }
+            });
+
+            // Sorting
+            const grid = document.getElementById('cardsGrid');
+            visibleCards.sort((a, b) => {
+                if (sortVal === 'price_asc') {
+                    const pa = parseFloat(a.dataset.price) || 99999999;
+                    const pb = parseFloat(b.dataset.price) || 99999999;
+                    return pa - pb;
+                } else if (sortVal === 'price_desc') {
+                    const pa = parseFloat(a.dataset.price) || 0;
+                    const pb = parseFloat(b.dataset.price) || 0;
+                    return pb - pa;
+                } else { // recent
+                    const tA = parseFloat(a.dataset.dateTs) || 0;
+                    const tB = parseFloat(b.dataset.dateTs) || 0;
+                    return tB - tA; // newest first
+                }
+            });
+
+            // Re-append to DOM to apply sort
+            visibleCards.forEach(card => grid.appendChild(card));
+
+            // Update Metrics Ticker
+            updateStats(visibleCards);
+        }
+
+        function updateStats(visibleCards) {
+            let sum = 0;
+            let min = Infinity;
+            let validPricesCount = 0;
+
+            visibleCards.forEach(card => {
+                const price = parseFloat(card.dataset.price);
+                if (price > 0) {
+                    sum += price;
+                    validPricesCount++;
+                    if (price < min) min = price;
+                }
+            });
+
+            const formatCurrency = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+
+            document.getElementById('stat-count').textContent = visibleCards.length;
+            document.getElementById('stat-avg').textContent = validPricesCount > 0 ? formatCurrency(sum / validPricesCount) : '-';
+            document.getElementById('stat-min').textContent = min !== Infinity ? formatCurrency(min) : '-';
+        }
     </script>
 </body>
 </html>
-
