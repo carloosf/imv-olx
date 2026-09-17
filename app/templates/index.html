@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
+    <title>OLX Radar • Monitor de Imóveis OLX Brasil</title>
+
+    <!-- Google Fonts Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS with CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            700: '#6d28d9',
+                            olx: '#6e0ad6',
+                            orange: '#f28000',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .glass-header {
+                @apply backdrop-blur-xl bg-white/80 dark:bg-zinc-950/80 border-b border-zinc-200/80 dark:border-zinc-800/80;
+            }
+            .glass-card {
+                @apply bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl shadow-sm hover:shadow-xl hover:border-zinc-300 dark:hover:border-zinc-700 transition-all duration-200;
+            }
+        }
+    </style>
+
+    <!-- Mapbox / MapLibre GL CSS & JS (WebGL Vector Engine) -->
+    <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+
+    <!-- Script inicial para evitar Flash de Tema Desalinhado -->
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: rgba(156, 163, 175, 0.4);
+            border-radius: 9999px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background-color: rgba(75, 85, 99, 0.5);
+        }
+
+        /* MapLibre Popup Styles - Modern Theme */
+        .maplibregl-popup-content {
+            background: transparent !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            border-radius: 1rem !important;
+        }
+        .maplibregl-popup-tip {
+            display: none !important;
+        }
+        .maplibregl-popup-close-button {
+            top: 8px !important;
+            right: 8px !important;
+            background: rgba(0, 0, 0, 0.5) !important;
+            color: #fff !important;
+            border-radius: 50% !important;
+            width: 24px !important;
+            height: 24px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-size: 14px !important;
+            backdrop-filter: blur(4px) !important;
+            border: none !important;
+            z-index: 10 !important;
+        }
+
+        /* Marker Pin */
+        .custom-map-marker {
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
+            cursor: pointer;
+        }
+        .custom-map-marker:hover, .custom-map-marker.active {
+            transform: scale(1.18) translateY(-4px);
+            z-index: 50;
+        }
+    </style>
+</head>
+<body class="bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 min-h-screen font-sans antialiased selection:bg-brand-500 selection:text-white transition-colors duration-200">
+
+    <!-- Top Sticky Header com Glassmorphism -->
+    <header class="sticky top-0 z-40 glass-header">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16 gap-4">
+                
+                <!-- Logo & Brand -->
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-olx via-indigo-600 to-brand-orange flex items-center justify-center text-white shadow-md shadow-purple-500/20">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-lg tracking-tight text-zinc-900 dark:text-white">OLX Radar</span>
+                            <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60">Recife & RMR</span>
+                        </div>
+                        <p class="text-xs text-zinc-500 dark:text-zinc-400 hidden sm:block">Monitoramento inteligente de imóveis com alertas</p>
+                    </div>
+                </div>
+
+                <!-- Bot Status Pill -->
+                <div class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-600 dark:text-zinc-300">
+                    <span class="relative flex h-2.5 w-2.5">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </span>
+                    <span class="font-medium">Monitor Ativo</span>
+                    <span class="text-zinc-400 dark:text-zinc-600">•</span>
+                    <span class="text-zinc-500 dark:text-zinc-400">a cada {{ status.check_interval_minutes }} min</span>
+                </div>
+
+                <!-- Header Actions -->
+                <div class="flex items-center gap-2.5">
+                    <!-- Sincronizar Agora Button -->
+                    <button id="btnSync" onclick="triggerSync()" class="relative inline-flex items-center gap-2 px-3.5 py-2 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-brand-olx to-indigo-600 hover:from-purple-700 hover:to-indigo-700 rounded-xl shadow-sm hover:shadow-md hover:shadow-purple-500/20 active:scale-95 transition-all duration-150">
+                        <svg id="syncIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        <span id="syncText">Sincronizar Agora</span>
+                    </button>
+
+                    <!-- Dark Mode Toggle Button -->
+                    <button id="themeToggle" onclick="toggleDarkMode()" aria-label="Alternar Tema" class="p-2 rounded-xl text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white border border-zinc-200 dark:border-zinc-800 transition-colors">
+                        <!-- Sun Icon (shown in dark mode) -->
+                        <svg id="themeSun" class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                        </svg>
+                        <!-- Moon Icon (shown in light mode) -->
+                        <svg id="themeMoon" class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                        </svg>
+                    </button>
+
+                    <!-- Swagger API Docs Link -->
+                    <a href="/docs" target="_blank" title="API Docs (Swagger)" class="hidden sm:inline-flex p-2 rounded-xl text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white border border-zinc-200 dark:border-zinc-800 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Metrics & Stats Grid (4 KPIs) -->
+        <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <!-- KPI 1: Total de Imóveis -->
+            <div class="glass-card p-4 flex flex-col justify-between">
+                <div class="flex items-center justify-between text-zinc-400 dark:text-zinc-500">
+                    <span class="text-xs font-semibold uppercase tracking-wider">Total de Imóveis</span>
+                    <svg class="w-4 h-4 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                    </svg>
+                </div>
+                <div class="mt-2 flex items-baseline gap-2">
+                    <span class="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">{{ stats.total_houses or total }}</span>
+                    <span class="text-xs text-zinc-500 dark:text-zinc-400">catalogados</span>
+                </div>
+                <span class="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1">SQLite (WAL) Persistido</span>
+            </div>
+
+            <!-- KPI 2: Preço Médio -->
+            <div class="glass-card p-4 flex flex-col justify-between">
+                <div class="flex items-center justify-between text-zinc-400 dark:text-zinc-500">
+                    <span class="text-xs font-semibold uppercase tracking-wider">Preço Médio</span>
+                    <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div class="mt-2">
+                    <span class="text-xl sm:text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400 block truncate">
+                        {{ stats.avg_price }}
+                    </span>
+                    <span class="text-xs text-zinc-500 dark:text-zinc-400">por aluguel</span>
+                </div>
+                <span class="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1">média dos anúncios ativos</span>
+            </div>
+
+            <!-- KPI 3: Menor Preço -->
+            <div class="glass-card p-4 flex flex-col justify-between">
+                <div class="flex items-center justify-between text-zinc-400 dark:text-zinc-500">
+                    <span class="text-xs font-semibold uppercase tracking-wider">Menor Preço</span>
+                    <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/>
+                    </svg>
+                </div>
+                <div class="mt-2">
+                    <span class="text-xl sm:text-2xl font-bold tracking-tight text-indigo-600 dark:text-indigo-400 block truncate">
+                        {{ stats.min_price }}
+                    </span>
+                    <span class="text-xs text-zinc-500 dark:text-zinc-400">mínimo encontrado</span>
+                </div>
+                <span class="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1">oportunidade de entrada</span>
+            </div>
+
+            <!-- KPI 4: Novas Casas (24h) -->
+            <div class="glass-card p-4 flex flex-col justify-between">
+                <div class="flex items-center justify-between text-zinc-400 dark:text-zinc-500">
+                    <span class="text-xs font-semibold uppercase tracking-wider">Novas Casas (24h)</span>
+                    <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div class="mt-2 flex items-baseline gap-2">
+                    <span class="text-2xl sm:text-3xl font-bold tracking-tight text-amber-500 dark:text-amber-400">+{{ stats.new_today }}</span>
+                    <span class="text-xs text-zinc-500 dark:text-zinc-400">anúncios</span>
+                </div>
+                <span class="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1">capturados recentemente</span>
+            </div>
+        </section>
+
+        <!-- Filtros Rápidos & Barra de Ferramentas -->
+        <section class="glass-card p-4 sm:p-5 space-y-4">
+            <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+                
+                <!-- Search Box (Realtime Client-side Filter) -->
+                <div class="relative flex-1 min-w-[260px]">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </div>
+                    <input type="text" id="filterSearch" oninput="applyClientFilters()" placeholder="Filtrar por título, bairro (ex: Boa Viagem, Várzea)..." class="w-full pl-10 pr-9 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-all">
+                    <button id="btnClearSearch" onclick="clearSearch()" class="absolute inset-y-0 right-0 pr-3 items-center text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hidden">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Dropdowns & Ordering -->
+                <div class="flex flex-wrap items-center gap-2.5">
+                    {% if queries_list and queries_list|length > 0 %}
+                    <!-- Seletor de Busca (SearchQuery) -->
+                    <div class="relative min-w-[170px]">
+                        <select id="querySelect" onchange="window.location.href='/?' + (this.value ? 'query_id=' + this.value : '')" class="w-full appearance-none bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 cursor-pointer transition-all">
+                            <option value="" {% if not selected_query_id %}selected{% endif %}>Todas as Buscas</option>
+                            {% for q in queries_list %}
+                            <option value="{{ q.id }}" {% if selected_query_id == q.id %}selected{% endif %}>{{ q.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-zinc-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Ordenação -->
+                    <div class="relative min-w-[150px]">
+                        <select id="sortSelect" onchange="applyClientFilters()" class="w-full appearance-none bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 cursor-pointer transition-all">
+                            <option value="recent">Mais Recentes</option>
+                            <option value="price_asc">Menor Preço</option>
+                            <option value="price_desc">Maior Preço</option>
+                            <option value="name">Ordem Alfabética</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-zinc-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Faixa Máxima de Preço -->
+                    <div class="relative min-w-[130px]">
+                        <select id="priceSelect" onchange="applyClientFilters()" class="w-full appearance-none bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 cursor-pointer transition-all">
+                            <option value="all">Qualquer Preço</option>
+                            <option value="1000">Até R$ 1.000</option>
+                            <option value="1400">Até R$ 1.400</option>
+                            <option value="1800">Até R$ 1.800</option>
+                            <option value="2500">Até R$ 2.500</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-zinc-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- View Switcher Tabs -->
+                    <div class="inline-flex p-1 bg-zinc-100 dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                        <button onclick="switchView('split', this)" class="view-tab-btn active px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-white bg-brand-600 shadow-sm">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
+                            </svg>
+                            <span>Dividido</span>
+                        </button>
+                        <button onclick="switchView('grid', this)" class="view-tab-btn px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                            </svg>
+                            <span>Cards</span>
+                        </button>
+                        <button onclick="switchView('map', this)" class="view-tab-btn px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                            </svg>
+                            <span>Mapa</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Neighborhood Filter Quick Chips -->
+            <div class="pt-2 border-t border-zinc-200/80 dark:border-zinc-800/80 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none text-xs">
+                <span class="text-zinc-400 font-medium whitespace-nowrap pl-0.5">Bairros:</span>
+                <button onclick="filterByChip('', this)" class="chip-btn active px-3 py-1 rounded-full font-medium transition-all bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 whitespace-nowrap">
+                    Todos
+                </button>
+                <button onclick="filterByChip('Boa Viagem', this)" class="chip-btn px-3 py-1 rounded-full font-medium transition-all bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
+                    Boa Viagem
+                </button>
+                <button onclick="filterByChip('Várzea', this)" class="chip-btn px-3 py-1 rounded-full font-medium transition-all bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
+                    Várzea
+                </button>
+                <button onclick="filterByChip('Casa Amarela', this)" class="chip-btn px-3 py-1 rounded-full font-medium transition-all bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
+                    Casa Amarela
+                </button>
+                <button onclick="filterByChip('Passarinho', this)" class="chip-btn px-3 py-1 rounded-full font-medium transition-all bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
+                    Passarinho
+                </button>
+                <button onclick="filterByChip('Iputinga', this)" class="chip-btn px-3 py-1 rounded-full font-medium transition-all bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
+                    Iputinga
+                </button>
+                <button onclick="filterByChip('Encruzilhada', this)" class="chip-btn px-3 py-1 rounded-full font-medium transition-all bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
+                    Encruzilhada
+                </button>
+                <button onclick="filterByChip('Pina', this)" class="chip-btn px-3 py-1 rounded-full font-medium transition-all bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
+                    Pina
+                </button>
+                <button onclick="filterByChip('Madalena', this)" class="chip-btn px-3 py-1 rounded-full font-medium transition-all bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
+                    Madalena
+                </button>
+                <button onclick="filterByChip('Imbiribeira', this)" class="chip-btn px-3 py-1 rounded-full font-medium transition-all bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
+                    Imbiribeira
+                </button>
+            </div>
+        </section>
+
+        <!-- Dynamic Counter Display -->
+        <div class="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 px-1">
+            <span>Exibindo <strong id="visibleCount" class="text-zinc-900 dark:text-white font-bold">{{ houses|length }}</strong> de {{ total }} imóveis</span>
+            <span id="activeFilterLabel" class="hidden text-brand-600 dark:text-brand-400 font-medium">Filtro ativo</span>
+        </div>
+
+        <!-- VIEW 1: Split View (Map + List Side-by-Side) [DEFAULT] -->
+        <div id="view-split" class="content-view-section block">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[720px]">
+                
+                <!-- Left: Interactive Map Slot -->
+                <div class="lg:col-span-6 xl:col-span-7 h-[360px] lg:h-full rounded-2xl overflow-hidden border border-zinc-200/80 dark:border-zinc-800/80 shadow-md relative" id="split-map-host">
+                    <div id="map-core" class="w-full h-full bg-zinc-100 dark:bg-zinc-900"></div>
+                </div>
+
+                <!-- Right: Scrollable Card List -->
+                <div class="lg:col-span-6 xl:col-span-5 h-[360px] lg:h-full overflow-y-auto pr-1 space-y-3.5" id="split-list-container">
+                    {% if houses %}
+                        {% for house in houses %}
+                        <article class="house-item-card glass-card p-3.5 cursor-pointer group" id="card-split-{{ house.id }}" data-id="{{ house.id }}" data-title="{{ house.title }}" data-location="{{ house.location }}" data-price="{{ house.price or 0 }}" onclick="focusHouseOnMap({{ house.id }}, {{ house.latitude or -8.0578 }}, {{ house.longitude or -34.8829 }})">
+                            <div class="flex gap-3.5">
+                                <!-- Thumbnail -->
+                                <div class="w-28 h-24 sm:w-32 sm:h-24 rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 flex-shrink-0 relative">
+                                    {% if house.image_url %}
+                                        <img src="{{ house.image_url }}" alt="{{ house.title }}" referrerpolicy="no-referrer" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=400&q=80';">
+                                    {% else %}
+                                        <div class="w-full h-full flex items-center justify-center text-zinc-400">
+                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                        </div>
+                                    {% endif %}
+                                    <span class="absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-black/60 text-white backdrop-blur-sm">
+                                        📍 {{ (house.location or "Recife").split(",")[-1].strip() }}
+                                    </span>
+                                </div>
+
+                                <!-- Details -->
+                                <div class="flex-1 flex flex-col justify-between min-w-0">
+                                    <div>
+                                        <div class="flex items-center justify-between gap-1">
+                                            <span class="text-base sm:text-lg font-extrabold text-emerald-600 dark:text-emerald-400">
+                                                {{ house.price_formatted or "Sob Consulta" }}
+                                            </span>
+                                            {% if house.notified_telegram %}
+                                                <span class="text-sky-500" title="Notificado no Telegram">
+                                                    <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295-.002 0-.003 0-.005 0l.213-3.054 5.56-5.022c.24-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.458c.538-.196 1.006.128.832.943z"/></svg>
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                        <h3 class="text-xs sm:text-sm font-semibold text-zinc-900 dark:text-white line-clamp-2 mt-0.5" title="{{ house.title }}">
+                                            {{ house.title }}
+                                        </h3>
+                                    </div>
+
+                                    <div class="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-zinc-100 dark:border-zinc-800 text-[11px] text-zinc-500 dark:text-zinc-400">
+                                        <span class="truncate">📍 {{ house.location or "Recife, PE" }}</span>
+                                        <a href="{{ house.url }}" target="_blank" rel="noopener" onclick="event.stopPropagation();" class="inline-flex items-center gap-1 font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 shrink-0">
+                                            <span>OLX</span>
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
+                        {% endfor %}
+                    {% else %}
+                        <div class="h-full flex flex-col items-center justify-center p-8 text-center glass-card">
+                            <div class="w-12 h-12 rounded-2xl bg-purple-100 dark:bg-purple-950/60 text-brand-600 flex items-center justify-center mb-3">
+                                🏠
+                            </div>
+                            <h3 class="text-base font-bold text-zinc-900 dark:text-white">Nenhum imóvel capturado</h3>
+                            <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1 max-w-xs">Clique em <strong>Sincronizar</strong> acima para consultar anúncios na OLX Brasil.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 2: Grid View (Cards Responsive Grid) -->
+        <div id="view-grid" class="content-view-section hidden">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5" id="grid-cards-container">
+                {% if houses %}
+                    {% for house in houses %}
+                    <article class="house-item-card glass-card overflow-hidden flex flex-col group" id="card-grid-{{ house.id }}" data-id="{{ house.id }}" data-title="{{ house.title }}" data-location="{{ house.location }}" data-price="{{ house.price or 0 }}">
+                        
+                        <!-- Image Container -->
+                        <div class="relative w-full aspect-video bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
+                            {% if house.image_url %}
+                                <img src="{{ house.image_url }}" alt="{{ house.title }}" referrerpolicy="no-referrer" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=600&q=80';">
+                            {% else %}
+                                <div class="w-full h-full flex flex-col items-center justify-center text-zinc-400 bg-zinc-100 dark:bg-zinc-800">
+                                    <svg class="w-8 h-8 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/></svg>
+                                    <span class="text-xs mt-1 text-zinc-500">Sem Foto</span>
+                                </div>
+                            {% endif %}
+
+                            <!-- Floating Badges -->
+                            <div class="absolute top-2.5 left-2.5 flex flex-wrap gap-1.5">
+                                <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-black/60 text-white backdrop-blur-md shadow-sm">
+                                    📍 {{ (house.location or "Recife").split(",")[-1].strip() }}
+                                </span>
+                            </div>
+
+                            <div class="absolute top-2.5 right-2.5">
+                                {% if house.notified_telegram %}
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/90 text-white backdrop-blur-md shadow-sm">
+                                        ✓ Telegram
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/90 text-zinc-950 backdrop-blur-md shadow-sm">
+                                        ⏳ Pendente
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Card Body -->
+                        <div class="p-4 flex-1 flex flex-col justify-between space-y-3">
+                            <div>
+                                <div class="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">
+                                    {{ house.price_formatted or "Sob Consulta" }}
+                                </div>
+                                <h2 class="text-sm font-semibold text-zinc-900 dark:text-white line-clamp-2 mt-1" title="{{ house.title }}">
+                                    {{ house.title }}
+                                </h2>
+                                <div class="mt-2 text-xs text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                    <span class="truncate">{{ house.location or "Recife, PE" }}</span>
+                                </div>
+                            </div>
+
+                            <!-- Card Footer -->
+                            <div class="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex items-center gap-2">
+                                <a href="{{ house.url }}" target="_blank" rel="noopener noreferrer" class="flex-1 text-center py-2 px-3 text-xs font-semibold text-white bg-gradient-to-r from-brand-olx to-indigo-600 hover:from-purple-700 hover:to-indigo-700 rounded-xl transition shadow-sm active:scale-95">
+                                    Ver na OLX ↗
+                                </a>
+                                <button onclick="focusHouseFromGrid({{ house.id }}, {{ house.latitude or -8.0578 }}, {{ house.longitude or -34.8829 }})" title="Ver no Mapa" class="p-2 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 transition active:scale-95">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </article>
+                    {% endfor %}
+                {% else %}
+                    <div class="col-span-full py-16 text-center glass-card p-8">
+                        <div class="w-16 h-16 rounded-3xl bg-purple-100 dark:bg-purple-950/60 text-brand-600 flex items-center justify-center mx-auto mb-4 text-2xl">
+                            🏡
+                        </div>
+                        <h3 class="text-lg font-bold text-zinc-900 dark:text-white">Nenhum imóvel disponível</h3>
+                        <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-1 max-w-md mx-auto">
+                            Os anúncios capturados pela rotina de monitoramento aparecerão automaticamente aqui.
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- VIEW 3: Full Map View -->
+        <div id="view-map" class="content-view-section hidden">
+            <div class="h-[750px] rounded-2xl overflow-hidden border border-zinc-200/80 dark:border-zinc-800/80 shadow-lg relative" id="full-map-host">
+                <!-- map-core is dynamically attached here when viewing full map -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer com Créditos do Autor -->
+    <footer class="border-t border-zinc-200/80 dark:border-zinc-800/80 bg-white/60 dark:bg-zinc-950/60 backdrop-blur-md mt-12 py-8 transition-colors duration-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-500 dark:text-zinc-400">
+            <!-- Left Branding & Author -->
+            <div class="flex items-center gap-2">
+                <span class="font-bold text-zinc-900 dark:text-white">OLX Radar</span>
+                <span class="text-zinc-300 dark:text-zinc-700">•</span>
+                <span>Desenvolvido com dedicação por <strong class="text-zinc-800 dark:text-zinc-200 font-semibold">Carlos Silva</strong></span>
+            </div>
+
+            <!-- Social Links & Profiles -->
+            <div class="flex flex-wrap items-center gap-2.5">
+                <!-- GitHub -->
+                <a href="https://github.com/carloosf" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:text-purple-600 dark:hover:text-purple-400 font-medium transition shadow-sm" title="GitHub: /carloosf">
+                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                        <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+                    </svg>
+                    <span>/carloosf</span>
+                </a>
+
+                <!-- LinkedIn -->
+                <a href="https://linkedin.com/in/carloosf" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition shadow-sm" title="LinkedIn: carloosf">
+                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                        <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+                    </svg>
+                    <span>LinkedIn</span>
+                </a>
+
+                <!-- Instagram -->
+                <a href="https://instagram.com/carloosf.s" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:text-pink-600 dark:hover:text-pink-400 font-medium transition shadow-sm" title="Instagram: @carloosf.s">
+                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                    </svg>
+                    <span>@carloosf.s</span>
+                </a>
+            </div>
+        </div>
+    </footer>
+
+
+    <!-- Floating Toast Notification Container -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform transition-all duration-300 translate-y-20 opacity-0 pointer-events-none">
+        <div class="flex items-center gap-3 px-4 py-3 bg-zinc-900/95 dark:bg-white/95 text-white dark:text-zinc-900 rounded-2xl shadow-2xl border border-zinc-800 dark:border-zinc-200 backdrop-blur-xl">
+            <span id="toastIcon" class="text-emerald-400 dark:text-emerald-600 font-bold text-lg">✓</span>
+            <div class="text-xs sm:text-sm font-medium" id="toastMessage">Operação realizada com sucesso!</div>
+        </div>
+    </div>
+
+    <!-- JSON Dados Embutidos para o Motor de Mapas -->
+    <script id="houses-json" type="application/json">
+        [
+            {% for h in houses %}
+            {
+                "id": {{ h.id }},
+                "title": {{ h.title|tojson }},
+                "price": {{ (h.price_formatted or "Sob Consulta")|tojson }},
+                "price_raw": {{ h.price or 0 }},
+                "location": {{ (h.location or "Recife")|tojson }},
+                "image_url": {{ (h.image_url or "https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=400&q=80")|tojson }},
+                "url": {{ h.url|tojson }},
+                "lat": {{ h.latitude or -8.0578 }},
+                "lng": {{ h.longitude or -34.8829 }},
+                "notified": {{ 'true' if h.notified_telegram else 'false' }}
+            }{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ]
+    </script>
+
+    <!-- Vanilla JS Application Logic -->
+    <script>
+        const housesData = JSON.parse(document.getElementById('houses-json').textContent || '[]');
+        let activeMap = null;
+        const markersMap = {};
+        let activeChip = '';
+
+        // Estilos Rápidos e Otimizados Carto Positron / Voyager (Sem API Key, Baixíssima Latência)
+        function getMapStyle() {
+            const isDark = document.documentElement.classList.contains('dark');
+            const tileUrl = isDark 
+                ? 'https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png'
+                : 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
+
+            return {
+                version: 8,
+                sources: {
+                    'carto-tiles': {
+                        type: 'raster',
+                        tiles: [
+                            tileUrl.replace('basemaps.', 'a.basemaps.'),
+                            tileUrl.replace('basemaps.', 'b.basemaps.'),
+                            tileUrl.replace('basemaps.', 'c.basemaps.'),
+                            tileUrl.replace('basemaps.', 'd.basemaps.')
+                        ],
+                        tileSize: 256,
+                        attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+                    }
+                },
+                layers: [
+                    {
+                        id: 'carto-tiles-layer',
+                        type: 'raster',
+                        source: 'carto-tiles',
+                        minzoom: 0,
+                        maxzoom: 19
+                    }
+                ]
+            };
+        }
+
+        // Geração Otimizada de Círculo Geográfico Aproximado (16 vértices)
+        function createGeoJSONCircle(center, radiusInMeters, points = 16) {
+            const coords = { latitude: center[1], longitude: center[0] };
+            const km = radiusInMeters / 1000;
+            const ret = [];
+            const distanceX = km / (111.320 * Math.cos(coords.latitude * Math.PI / 180));
+            const distanceY = km / 110.574;
+
+            for (let i = 0; i < points; i++) {
+                const theta = (i / points) * (2 * Math.PI);
+                const x = distanceX * Math.cos(theta);
+                const y = distanceY * Math.sin(theta);
+                ret.push([coords.longitude + x, coords.latitude + y]);
+            }
+            ret.push(ret[0]);
+            return {
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [ret]
+                }
+            };
+        }
+
+        // Inicialização de Instância ÚNICA de Alta Performance
+        function initMap() {
+            const mapContainer = document.getElementById('map-core');
+            if (!mapContainer || activeMap) return;
+
+            const defaultCenter = [-34.8950, -8.0578]; // Recife Centro
+            const defaultZoom = 12.2;
+
+            activeMap = new maplibregl.Map({
+                container: 'map-core',
+                style: getMapStyle(),
+                center: defaultCenter,
+                zoom: defaultZoom,
+                fadeDuration: 0,
+                maxTileCacheSize: 250,
+                renderWorldCopies: false,
+                trackResize: true
+            });
+
+            activeMap.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+
+            activeMap.on('load', () => {
+                setupMapLayersAndMarkers();
+            });
+        }
+
+        // Popup HTML com Estilo Moderno Tailwind
+        function createPopupHTML(h) {
+            return `
+                <div class="w-64 bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden shadow-2xl border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 font-sans">
+                    <div class="relative w-full h-32 bg-zinc-800 overflow-hidden">
+                        <img src="${h.image_url}" alt="${h.title}" referrerpolicy="no-referrer" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=400&q=80'">
+                        <span class="absolute bottom-2 left-2 px-2 py-0.5 rounded text-[10px] font-bold bg-black/60 text-white backdrop-blur-md">
+                            📍 ${h.location.split(',').pop().trim()}
+                        </span>
+                    </div>
+                    <div class="p-3 space-y-1.5">
+                        <div class="text-base font-extrabold text-emerald-600 dark:text-emerald-400">${h.price}</div>
+                        <div class="text-xs font-semibold text-zinc-800 dark:text-zinc-200 line-clamp-2 leading-tight">${h.title}</div>
+                        <div class="text-[11px] text-zinc-400">⭕ Área aproximada no bairro</div>
+                        <a href="${h.url}" target="_blank" rel="noopener" class="mt-2 block text-center py-1.5 px-3 text-xs font-semibold text-white bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg hover:opacity-95 transition">
+                            Abrir Anúncio na OLX ↗
+                        </a>
+                    </div>
+                </div>
+            `;
+        }
+
+        function setupMapLayersAndMarkers() {
+            if (!activeMap || !housesData || housesData.length === 0) return;
+
+            // 1. Círculos de Raio GeoJSON em Lote (400m)
+            const circleFeatures = housesData.filter(h => h.lat && h.lng).map(h => createGeoJSONCircle([h.lng, h.lat], 400));
+            
+            if (circleFeatures.length > 0) {
+                activeMap.addSource('all-circles-source', {
+                    type: 'geojson',
+                    data: { type: 'FeatureCollection', features: circleFeatures }
+                });
+
+                activeMap.addLayer({
+                    id: 'all-circles-fill',
+                    type: 'fill',
+                    source: 'all-circles-source',
+                    paint: {
+                        'fill-color': '#7c3aed',
+                        'fill-opacity': 0.12
+                    }
+                });
+
+                activeMap.addLayer({
+                    id: 'all-circles-line',
+                    type: 'line',
+                    source: 'all-circles-source',
+                    paint: {
+                        'line-color': '#8b5cf6',
+                        'line-width': 1.2,
+                        'line-dasharray': [2, 3]
+                    }
+                });
+            }
+
+            // 2. Marcadores com Hardware Acceleration
+            const bounds = new maplibregl.LngLatBounds();
+
+            housesData.forEach(h => {
+                if (h.lat && h.lng) {
+                    const el = document.createElement('div');
+                    el.className = 'custom-map-marker inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold text-white bg-gradient-to-r from-brand-olx to-indigo-600 border-2 border-white dark:border-zinc-900 shadow-md select-none';
+                    el.style.willChange = 'transform';
+                    el.innerHTML = `<span>🏠</span><span>${h.price}</span>`;
+
+                    const popup = new maplibregl.Popup({ offset: 15, maxWidth: '280px', closeButton: true }).setHTML(createPopupHTML(h));
+                    const marker = new maplibregl.Marker({ element: el })
+                        .setLngLat([h.lng, h.lat])
+                        .setPopup(popup)
+                        .addTo(activeMap);
+
+                    el.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        highlightSelectedCard(h.id);
+                    });
+
+                    markersMap[h.id] = marker;
+                    bounds.extend([h.lng, h.lat]);
+                }
+            });
+
+            if (!bounds.isEmpty()) {
+                activeMap.fitBounds(bounds, { padding: 40, maxZoom: 14 });
+            }
+        }
+
+        // Foco e Destaque Fluido com easeTo (60fps)
+        function focusHouseOnMap(id, lat, lng) {
+            highlightSelectedCard(id);
+
+            if (activeMap && lat && lng) {
+                activeMap.easeTo({
+                    center: [lng, lat],
+                    zoom: 14.5,
+                    duration: 350,
+                    essential: true
+                });
+                const m = markersMap[id];
+                if (m) {
+                    m.togglePopup();
+                }
+            }
+        }
+
+        function focusHouseFromGrid(id, lat, lng) {
+            const splitTabBtn = document.querySelectorAll('.view-tab-btn')[0];
+            switchView('split', splitTabBtn);
+            setTimeout(() => {
+                focusHouseOnMap(id, lat, lng);
+            }, 100);
+        }
+
+        function highlightSelectedCard(id) {
+            document.querySelectorAll('.house-item-card').forEach(c => {
+                c.classList.remove('ring-2', 'ring-brand-500', 'bg-purple-50/50', 'dark:bg-purple-950/20');
+            });
+
+            const card = document.getElementById(`card-split-${id}`) || document.getElementById(`card-grid-${id}`);
+            if (card) {
+                card.classList.add('ring-2', 'ring-brand-500', 'bg-purple-50/50', 'dark:bg-purple-950/20');
+                card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        // Filtro em Tempo Real (Client-Side)
+        function applyClientFilters() {
+            const query = (document.getElementById('filterSearch').value || '').toLowerCase().trim();
+            const maxPriceVal = document.getElementById('priceSelect').value;
+            const sortVal = document.getElementById('sortSelect').value;
+            const clearBtn = document.getElementById('btnClearSearch');
+
+            if (clearBtn) {
+                clearBtn.classList.toggle('hidden', query.length === 0);
+            }
+
+            const cards = Array.from(document.querySelectorAll('.house-item-card'));
+            let visible = 0;
+
+            cards.forEach(card => {
+                const title = (card.getAttribute('data-title') || '').toLowerCase();
+                const loc = (card.getAttribute('data-location') || '').toLowerCase();
+                const price = parseFloat(card.getAttribute('data-price') || '0');
+                const id = card.getAttribute('data-id');
+
+                let matchSearch = true;
+                if (query) {
+                    matchSearch = title.includes(query) || loc.includes(query);
+                }
+
+                let matchChip = true;
+                if (activeChip) {
+                    matchChip = loc.includes(activeChip.toLowerCase());
+                }
+
+                let matchPrice = true;
+                if (maxPriceVal !== 'all') {
+                    const maxP = parseFloat(maxPriceVal);
+                    matchPrice = price > 0 && price <= maxP;
+                }
+
+                const shouldShow = matchSearch && matchChip && matchPrice;
+                card.style.display = shouldShow ? '' : 'none';
+
+                if (shouldShow) visible++;
+
+                // Oculta/Exibe marcadores no mapa
+                const marker = markersMap[id];
+                if (marker) {
+                    marker.getElement().style.display = shouldShow ? '' : 'none';
+                }
+            });
+
+            const splitCardsCount = document.querySelectorAll('#split-list-container .house-item-card').length;
+            const gridCardsCount = document.querySelectorAll('#grid-cards-container .house-item-card').length;
+            const divisor = (splitCardsCount > 0 && gridCardsCount > 0) ? 2 : 1;
+            document.getElementById('visibleCount').innerText = Math.round(visible / divisor);
+
+            // Ordenação dos containers
+            sortContainer(document.getElementById('split-list-container'), sortVal);
+            sortContainer(document.getElementById('grid-cards-container'), sortVal);
+        }
+
+        function sortContainer(container, sortBy) {
+            if (!container) return;
+            const items = Array.from(container.children).filter(el => el.classList.contains('house-item-card'));
+
+            items.sort((a, b) => {
+                const pA = parseFloat(a.getAttribute('data-price') || '0');
+                const pB = parseFloat(b.getAttribute('data-price') || '0');
+                const idA = parseInt(a.getAttribute('data-id') || '0');
+                const idB = parseInt(b.getAttribute('data-id') || '0');
+                const tA = (a.getAttribute('data-title') || '').toLowerCase();
+                const tB = (b.getAttribute('data-title') || '').toLowerCase();
+
+                if (sortBy === 'price_asc') return (pA || 999999) - (pB || 999999);
+                if (sortBy === 'price_desc') return pB - pA;
+                if (sortBy === 'name') return tA.localeCompare(tB);
+                return idB - idA; // recent default
+            });
+
+            items.forEach(item => container.appendChild(item));
+        }
+
+        function clearSearch() {
+            document.getElementById('filterSearch').value = '';
+            applyClientFilters();
+        }
+
+        function filterByChip(neighborhood, btn) {
+            document.querySelectorAll('.chip-btn').forEach(b => {
+                b.classList.remove('bg-zinc-900', 'dark:bg-white', 'text-white', 'dark:text-zinc-900');
+                b.classList.add('bg-zinc-100', 'dark:bg-zinc-800', 'text-zinc-600', 'dark:text-zinc-300');
+            });
+
+            btn.classList.remove('bg-zinc-100', 'dark:bg-zinc-800', 'text-zinc-600', 'dark:text-zinc-300');
+            btn.classList.add('bg-zinc-900', 'dark:bg-white', 'text-white', 'dark:text-zinc-900');
+
+            activeChip = neighborhood;
+            applyClientFilters();
+        }
+
+        // Alternância Suave de Abas de Visualização (Move o Container do Mapa Preservando WebGL)
+        function switchView(viewName, btn) {
+            document.querySelectorAll('.view-tab-btn').forEach(b => {
+                b.classList.remove('active', 'text-white', 'bg-brand-600', 'shadow-sm');
+                b.classList.add('text-zinc-600', 'dark:text-zinc-400');
+            });
+
+            if (btn) {
+                btn.classList.add('active', 'text-white', 'bg-brand-600', 'shadow-sm');
+                btn.classList.remove('text-zinc-600', 'dark:text-zinc-400');
+            }
+
+            document.querySelectorAll('.content-view-section').forEach(sec => sec.classList.add('hidden'));
+            const target = document.getElementById(`view-${viewName}`);
+            if (target) target.classList.remove('hidden');
+
+            const mapCoreEl = document.getElementById('map-core');
+            if (viewName === 'split') {
+                const splitHost = document.getElementById('split-map-host');
+                if (splitHost && mapCoreEl && mapCoreEl.parentElement !== splitHost) {
+                    splitHost.appendChild(mapCoreEl);
+                }
+            } else if (viewName === 'map') {
+                const fullHost = document.getElementById('full-map-host');
+                if (fullHost && mapCoreEl && mapCoreEl.parentElement !== fullHost) {
+                    fullHost.appendChild(mapCoreEl);
+                }
+            }
+
+            if (activeMap) {
+                requestAnimationFrame(() => {
+                    activeMap.resize();
+                });
+            }
+        }
+
+        // Dark Mode Toggle
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const isDark = html.classList.toggle('dark');
+            localStorage.theme = isDark ? 'dark' : 'light';
+
+            if (activeMap) {
+                activeMap.setStyle(getMapStyle());
+                activeMap.once('style.load', () => {
+                    setupMapLayersAndMarkers();
+                });
+            }
+        }
+
+        // Disparo de Sincronização Manual (POST /api/monitor/trigger)
+        async function triggerSync() {
+            const btn = document.getElementById('btnSync');
+            const icon = document.getElementById('syncIcon');
+            const text = document.getElementById('syncText');
+
+            btn.disabled = true;
+            icon.classList.add('animate-spin');
+            text.innerText = 'Buscando...';
+
+            try {
+                const res = await fetch('/api/monitor/trigger?sync_now=true', { method: 'POST' });
+                const data = await res.json();
+                showToast(data.message || 'Sincronização concluída com sucesso!');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1400);
+            } catch (err) {
+                showToast('Erro ao sincronizar: ' + err.message, true);
+                btn.disabled = false;
+                icon.classList.remove('animate-spin');
+                text.innerText = 'Sincronizar';
+            }
+        }
+
+        // Toast de Feedback
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('toast');
+            const msgEl = document.getElementById('toastMessage');
+            const iconEl = document.getElementById('toastIcon');
+
+            msgEl.innerText = msg;
+            iconEl.innerText = isError ? '✕' : '✓';
+            iconEl.className = isError ? 'text-red-400 dark:text-red-600 font-bold text-lg' : 'text-emerald-400 dark:text-emerald-600 font-bold text-lg';
+
+            toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
+            }, 3500);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initMap();
+        });
+    </script>
+</body>
+</html>
+

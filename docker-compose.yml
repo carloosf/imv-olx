@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  imv-olx:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: imv-olx-monitor
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      # Persiste a base de dados SQLite mesmo recriando o container
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
