@@ -121,5 +121,40 @@ async def test_get_status(client):
 async def test_html_dashboard(client):
     response = await client.get("/")
     assert response.status_code == 200
-    assert "Monitor de Imóveis OLX Brasil" in response.text
-    assert "Sincronizar Agora" in response.text
+    assert "OLX Radar" in response.text
+    assert "Monitorando em tempo real" in response.text
+    assert "btnSync" not in response.text
+
+
+@pytest.mark.asyncio
+async def test_trigger_unauthorized(client):
+    response = await client.post("/api/monitor/trigger")
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Acesso restrito ao administrador"
+
+
+@pytest.mark.asyncio
+async def test_trigger_authorized_header(client, monkeypatch):
+    from unittest.mock import AsyncMock
+    from app import services
+    monkeypatch.setattr(services, "run_sync_routine", AsyncMock(return_value={"status": "completed", "message": "OK"}))
+
+    from app.config import get_settings
+    settings = get_settings()
+
+    response = await client.post("/api/monitor/trigger", headers={"x-admin-key": settings.ADMIN_SECRET_KEY})
+    assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_trigger_authorized_query(client, monkeypatch):
+    from unittest.mock import AsyncMock
+    from app import services
+    monkeypatch.setattr(services, "run_sync_routine", AsyncMock(return_value={"status": "completed", "message": "OK"}))
+
+    from app.config import get_settings
+    settings = get_settings()
+
+    response = await client.post(f"/api/monitor/trigger?secret={settings.ADMIN_SECRET_KEY}")
+    assert response.status_code == 200
+

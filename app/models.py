@@ -27,6 +27,7 @@ class SearchQuery(Base):
     olx_url = Column(Text, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    last_synced_at = Column(DateTime, nullable=True)
 
     houses = relationship("HouseAd", back_populates="search_query", cascade="all, delete-orphan")
 
@@ -129,7 +130,7 @@ class HouseAdFilter(BaseModel):
     max_price: Optional[float] = None
     search: Optional[str] = None
     notified_only: Optional[bool] = None
-    limit: int = 60
+    limit: int = 1000
     offset: int = 0
 
 
@@ -156,5 +157,4 @@ class MonitorStatus(BaseModel):
     last_new_count: int = 0
     total_ads_stored: int = 0
     check_interval_minutes: int
-    target_search_url: str
 

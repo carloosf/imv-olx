@@ -148,12 +148,13 @@ def _query_nominatim(location_query: str) -> Optional[Tuple[float, float]]:
     try:
         clean = re.sub(r"\s+", " ", location_query.strip())
         parts = [p.strip() for p in clean.split(",") if p.strip()]
-        if len(parts) == 2:
-            formatted_query = f"{parts[1]}, {parts[0]}, PE, Brasil"
+        if len(parts) >= 2:
+            formatted_query = f"{parts[1]}, {parts[0]}, Brasil"
         elif len(parts) == 1:
-            formatted_query = f"{parts[0]}, Recife, PE, Brasil"
+            formatted_query = f"{parts[0]}, Brasil"
         else:
-            formatted_query = f"{clean}, PE, Brasil"
+            formatted_query = f"{clean}, Brasil"
+
 
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 imv-olx/1.0",

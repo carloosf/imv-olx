@@ -61,6 +61,34 @@
             }
         }
     </style>
+    
+    <!-- MapLibre GL CSS & JS -->
+    <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <style>
+        .maplibregl-popup-content {
+            background: transparent !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+        }
+        .maplibregl-popup-tip {
+            display: none !important;
+        }
+        .glass-popup .maplibregl-popup-content {
+            background-color: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .dark .glass-popup .maplibregl-popup-content {
+            background-color: rgba(20, 20, 23, 0.95) !important;
+            border-color: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+            color: white;
+        }
+    </style>
+
     <script>
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
@@ -69,7 +97,17 @@
         }
     </script>
 </head>
-<body class="bg-[#FAFAFA] dark:bg-[#0C0C0E] text-neutral-900 dark:text-neutral-100 min-h-screen transition-colors duration-200">
+<body class="bg-[#FAFAFA] dark:bg-[#0C0C0E] text-neutral-900 dark:text-neutral-100 min-h-screen transition-colors duration-200 flex flex-col">
+
+    <!-- Global Page Loader (Evita FOUC) -->
+    <div id="pageLoader" class="fixed inset-0 z-[100] bg-[#FAFAFA] dark:bg-[#0C0C0E] flex flex-col items-center justify-center transition-opacity duration-500">
+        <div class="flex flex-col items-center gap-5">
+            <div class="w-16 h-16 rounded-3xl glass-panel surface-ring shadow-2xl flex items-center justify-center">
+                <div class="w-6 h-6 rounded-full bg-emerald-500 ring-4 ring-emerald-500/20 animate-bounce"></div>
+            </div>
+            <div class="text-sm font-semibold tracking-widest text-neutral-900 dark:text-white uppercase animate-pulse">Imóveis Pulse</div>
+        </div>
+    </div>
 
     <!-- Header Fixo -->
     <header class="fixed top-0 inset-x-0 h-[56px] glass-header z-40 px-4 sm:px-6 flex items-center justify-between">
@@ -106,6 +144,10 @@
 
         <!-- Ações Rápidas -->
         <div class="flex items-center justify-end gap-3 w-1/3">
+            <button onclick="openSyncModal()" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors focus:outline-none" title="Sincronizar Regiões">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                <span>Sincronizar</span>
+            </button>
             <button onclick="toggleTheme()" class="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors focus:outline-none">
                 <svg id="themeIconDark" class="w-4 h-4 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                 <svg id="themeIconLight" class="w-4 h-4 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
@@ -130,7 +172,7 @@
         </div>
     </header>
 
-    <main class="pt-[56px] pb-16">
+    <main class="pt-[56px] flex-1">
         
         <!-- Barra de Métricas (Ticker) -->
         <div class="sticky top-[56px] z-30 border-b border-neutral-200/80 dark:border-white/[0.08] bg-white/80 dark:bg-[#141417]/80 backdrop-blur-md py-2 px-4 sm:px-6 flex items-center text-[13px] font-medium overflow-x-auto no-scrollbar tabular-nums whitespace-nowrap shadow-sm">
@@ -170,8 +212,8 @@
                 </div>
             </div>
 
-            <!-- Filtros Chips & Sort -->
-            <div class="flex items-center gap-2 overflow-x-auto w-full lg:w-auto no-scrollbar pb-1 lg:pb-0">
+            <!-- Filtros Chips, Sort e View Tabs -->
+            <div class="flex items-center gap-3 overflow-x-auto w-full lg:w-auto no-scrollbar pb-1 lg:pb-0">
                 <div id="filterChips" class="flex items-center gap-2 bg-neutral-100/50 dark:bg-white/[0.02] p-1 rounded-xl border border-neutral-200/50 dark:border-white/[0.04] shrink-0">
                     <button data-filter="all" class="chip active px-3 py-1.5 rounded-lg text-[12px] font-medium bg-white dark:bg-[#202023] text-neutral-900 dark:text-white shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06] transition-all focus:outline-none">Todos</button>
                     <button data-filter="below-avg" class="chip px-3 py-1.5 rounded-lg text-[12px] font-medium text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-all whitespace-nowrap focus:outline-none">Abaixo da Média</button>
@@ -179,7 +221,7 @@
                     <button data-filter="recent" class="chip px-3 py-1.5 rounded-lg text-[12px] font-medium text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-all whitespace-nowrap focus:outline-none">Mais Recentes</button>
                 </div>
 
-                <div class="h-6 w-px bg-neutral-200 dark:bg-white/10 mx-1 shrink-0"></div>
+                <div class="h-6 w-px bg-neutral-200 dark:bg-white/10 shrink-0"></div>
 
                 <div class="relative shrink-0">
                     <select id="sortSelect" class="appearance-none bg-white dark:bg-[#141417] border border-neutral-200/80 dark:border-white/[0.08] rounded-xl pl-3 pr-8 py-1.5 text-[12px] font-medium text-neutral-700 dark:text-neutral-300 focus:outline-none focus:ring-1 focus:ring-neutral-300 dark:focus:ring-neutral-600 shadow-sm cursor-pointer transition-all">
@@ -191,11 +233,24 @@
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                     </div>
                 </div>
+
+                <div class="h-6 w-px bg-neutral-200 dark:bg-white/10 shrink-0"></div>
+
+                <div class="flex items-center gap-1 bg-neutral-100/50 dark:bg-white/[0.02] p-1 rounded-xl border border-neutral-200/50 dark:border-white/[0.04] shrink-0">
+                    <button id="btnViewGrid" onclick="switchView('grid')" class="px-2.5 py-1.5 rounded-lg text-[12px] font-medium bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-sm transition-all focus:outline-none flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+                        Cards
+                    </button>
+                    <button id="btnViewMap" onclick="switchView('map')" class="px-2.5 py-1.5 rounded-lg text-[12px] font-medium text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-all focus:outline-none flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                        Mapa
+                    </button>
+                </div>
             </div>
         </div>
 
-        <!-- Grid de Cards -->
-        <div class="max-w-7xl mx-auto px-4 sm:px-6">
+        <!-- View 1: Grid de Cards -->
+        <div id="cardsGridWrapper" class="max-w-7xl mx-auto px-4 sm:px-6">
             <div id="cardsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                 {% if houses %}
                     {% for house in houses %}
@@ -209,7 +264,11 @@
                              data-title="{{ (house.title or '') | lower }}"
                              data-location="{{ (house.location or '') | lower }}"
                              data-has-photo="{{ has_photo }}"
-                             data-date-ts="{{ house.created_at.timestamp() if house.created_at else 0 }}">
+                             data-date-ts="{{ house.created_at.timestamp() if house.created_at else 0 }}"
+                             data-lat="{{ house.latitude or '' }}"
+                             data-lng="{{ house.longitude or '' }}"
+                             data-price-formatted="{{ house.price_formatted or house.price_str or 'Sob Consulta' }}"
+                             data-url="{{ house.url }}">
                         
                         <!-- Header Imagem 4:3 -->
                         <div class="relative w-full aspect-[4/3] bg-neutral-100 dark:bg-[#1A1A1E] overflow-hidden">
@@ -275,7 +334,90 @@
                 {% endif %}
             </div>
         </div>
+
+        <!-- View 2: Mapa Interativo -->
+        <div id="mapView" class="hidden max-w-7xl mx-auto px-4 sm:px-6 mb-8">
+            <div id="mapContainer" class="w-full h-[70vh] min-h-[500px] bg-neutral-100 dark:bg-[#141417] rounded-2xl overflow-hidden border border-neutral-200/80 dark:border-white/[0.08] shadow-md z-0">
+                <!-- MapLibre will inject here -->
+            </div>
+        </div>
+
     </main>
+
+    <!-- Footer com Redes Sociais -->
+    <footer class="mt-12 border-t border-neutral-200/80 dark:border-white/[0.08] bg-white dark:bg-[#0C0C0E]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex flex-col sm:flex-row items-center justify-between text-xs text-neutral-500 gap-4">
+            <p>© 2026 Imóveis Pulse. Todos os direitos reservados.</p>
+            <div class="flex items-center gap-6">
+                <a href="https://github.com/carloosf" target="_blank" class="hover:text-neutral-900 dark:hover:text-white transition-colors flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                    GitHub
+                </a>
+                <a href="#" target="_blank" class="hover:text-neutral-900 dark:hover:text-white transition-colors flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                    LinkedIn
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modal de Sincronização -->
+    <div id="syncModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm opacity-0 invisible transition-all duration-300">
+        <div class="bg-white dark:bg-[#141417] p-6 sm:p-8 rounded-3xl shadow-2xl surface-ring w-full max-w-2xl transform scale-95 transition-transform duration-300 mx-4" id="syncContent">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-xl font-semibold tracking-tight text-neutral-900 dark:text-white">Sincronização Ativa</h2>
+                    <p class="text-sm text-neutral-500 mt-1">Status e atualização forçada por região.</p>
+                </div>
+                <button onclick="closeSyncModal()" class="p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-500 transition-colors focus:outline-none">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            
+            <div class="flex flex-col gap-3 mb-6 max-h-[60vh] overflow-y-auto no-scrollbar">
+                {% if regions %}
+                    {% for r in regions %}
+                    <div class="p-4 rounded-2xl border border-neutral-200/80 dark:border-white/[0.08] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-neutral-50/50 dark:bg-[#1A1A1E]">
+                        <div class="flex-1">
+                            <div class="text-sm font-semibold text-neutral-900 dark:text-white truncate" title="{{ r.name }}">{{ r.name.split('-')[0] | truncate(30) }}</div>
+                            <div class="text-xs text-neutral-500 mt-1.5 flex flex-col sm:flex-row gap-2 sm:gap-4">
+                                <span class="flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Última: {{ r.last_synced_at | br_time }}</span>
+                                <span class="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Próxima em: ~{{ status.check_interval_minutes }} min</span>
+                            </div>
+                        </div>
+                        <button onclick="openAuthModal('{{ r.id }}')" class="shrink-0 px-4 py-2 bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 rounded-xl text-xs font-semibold hover:opacity-90 transition-opacity focus:outline-none">
+                            Forçar Região
+                        </button>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+            
+            <button onclick="openAuthModal('all')" class="w-full p-4 rounded-2xl border border-neutral-200/80 dark:border-white/[0.08] hover:border-emerald-500/50 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-all text-center group focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <div class="text-sm font-semibold text-emerald-700 dark:text-emerald-400 transition-transform">Forçar Sincronização Global (Todas)</div>
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal de Senha Admin -->
+    <div id="authModal" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm opacity-0 invisible transition-all duration-300">
+        <div class="bg-white dark:bg-[#141417] p-6 rounded-3xl shadow-2xl surface-ring w-full max-w-sm transform scale-95 transition-transform duration-300 mx-4" id="authContent">
+            <div class="text-center mb-6">
+                <div class="w-12 h-12 rounded-2xl bg-neutral-100 dark:bg-white/5 mx-auto flex items-center justify-center mb-4 ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
+                    <svg class="w-6 h-6 text-neutral-900 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                </div>
+                <h3 class="text-lg font-semibold tracking-tight text-neutral-900 dark:text-white">Autenticação</h3>
+                <p class="text-xs text-neutral-500 mt-1.5">Insira a SECRET_KEY_ADMIN para rodar a requisição no servidor da OLX.</p>
+            </div>
+            <div class="space-y-4">
+                <input type="password" id="adminSecretInput" placeholder="••••••••••••••" class="w-full px-4 py-3 bg-neutral-100 dark:bg-[#1A1A1E] border border-neutral-200/80 dark:border-white/[0.08] rounded-xl text-sm text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white transition-all text-center tracking-widest font-mono" autocomplete="off" onkeypress="if(event.key === 'Enter') submitAuth()">
+                <div class="flex items-center gap-3">
+                    <button onclick="closeAuthModal()" class="flex-1 px-4 py-2.5 rounded-xl border border-neutral-200/80 dark:border-white/[0.08] text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors focus:outline-none">Cancelar</button>
+                    <button id="btnConfirmAuth" onclick="submitAuth()" class="flex-1 px-4 py-2.5 rounded-xl bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 text-sm font-semibold hover:opacity-90 transition-opacity focus:outline-none flex justify-center items-center h-[42px]">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Modal Onboarding -->
     <div id="onboardingModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm opacity-0 invisible transition-all duration-300">
@@ -304,8 +446,39 @@
         </div>
     </div>
 
+    <!-- Toast Notifications Container -->
+    <div id="toastContainer" class="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[70] flex flex-col gap-2"></div>
+
     <!-- Vanilla JS Logic -->
     <script>
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            const bgClass = type === 'success' ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-400' 
+                                               : 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/20 text-red-800 dark:text-red-400';
+            
+            const icon = type === 'success' 
+                ? '<svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>'
+                : '<svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>';
+
+            toast.className = `flex items-start gap-3 p-4 rounded-xl border ${bgClass} shadow-lg transform translate-y-full opacity-0 transition-all duration-300 max-w-sm w-full`;
+            toast.innerHTML = `${icon}<div class="text-sm font-medium whitespace-pre-line leading-relaxed">${message}</div>`;
+            
+            container.appendChild(toast);
+            
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    toast.classList.remove('translate-y-full', 'opacity-0');
+                });
+            });
+            
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'scale-95');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
         // Constants & State
         const REGIONS = {
             'all': 'Todas as Regiões',
@@ -318,10 +491,11 @@
         
         let currentRegion = localStorage.getItem('selected_region_id') || null;
         let searchTimeout = null;
+        let mapInstance = null;
+        let markers = [];
 
         // Init
         document.addEventListener('DOMContentLoaded', () => {
-            // Check recency logic purely on client to avoid jinja context issues
             const nowMs = Date.now();
             document.querySelectorAll('.house-card').forEach(card => {
                 const ts = parseFloat(card.dataset.dateTs) * 1000;
@@ -339,8 +513,18 @@
                 setRegionUI(currentRegion, REGIONS[currentRegion]);
             }
             
-            // Force apply filters on first load to calculate stats
             applyFilters();
+            
+            // Fade out loader after rendering
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    const loader = document.getElementById('pageLoader');
+                    if (loader) {
+                        loader.classList.add('opacity-0', 'pointer-events-none');
+                        setTimeout(() => loader.remove(), 500);
+                    }
+                }, 100);
+            });
             
             // Setup Listeners
             document.getElementById('searchInput').addEventListener('input', () => {
@@ -365,7 +549,6 @@
                 });
             });
 
-            // Keyboard shortcut (⌘K)
             document.addEventListener('keydown', (e) => {
                 if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
                     e.preventDefault();
@@ -373,11 +556,16 @@
                 }
             });
 
-            // Close dropdowns on outside click
             document.addEventListener('click', (e) => {
                 const regionMenu = document.getElementById('regionDropdownMenu');
                 const supportMenu = document.getElementById('supportPopover');
                 const regionBtn = document.getElementById('regionDropdownBtn');
+                
+                const syncModal = document.getElementById('syncModal');
+                const syncContent = document.getElementById('syncContent');
+                
+                const authModal = document.getElementById('authModal');
+                const authContent = document.getElementById('authContent');
                 
                 if (regionMenu && !regionMenu.contains(e.target) && !regionBtn.contains(e.target) && !regionMenu.classList.contains('invisible')) {
                     toggleRegionDropdown();
@@ -385,16 +573,257 @@
                 if (supportMenu && !supportMenu.contains(e.target) && !e.target.closest('button[onclick="toggleSupportPopover()"]') && !supportMenu.classList.contains('invisible')) {
                     toggleSupportPopover();
                 }
+                if (syncModal && !syncModal.classList.contains('invisible') && !syncContent.contains(e.target) && !e.target.closest('button[onclick="openSyncModal()"]')) {
+                    closeSyncModal();
+                }
+                if (authModal && !authModal.classList.contains('invisible') && !authContent.contains(e.target) && !e.target.closest('button[onclick^="openAuthModal"]')) {
+                    closeAuthModal();
+                }
             });
         });
+
+        // Map View Switcher
+        function switchView(view) {
+            const gridView = document.getElementById('cardsGridWrapper');
+            const mapView = document.getElementById('mapView');
+            const btnGrid = document.getElementById('btnViewGrid');
+            const btnMap = document.getElementById('btnViewMap');
+
+            const activeClasses = ['bg-neutral-900', 'text-white', 'dark:bg-white', 'dark:text-neutral-900', 'shadow-sm'];
+            const inactiveClasses = ['text-neutral-500', 'hover:text-neutral-900', 'dark:hover:text-white'];
+
+            if (view === 'grid') {
+                gridView.classList.remove('hidden');
+                mapView.classList.add('hidden');
+                
+                btnGrid.classList.add(...activeClasses);
+                btnGrid.classList.remove(...inactiveClasses);
+                btnMap.classList.add(...inactiveClasses);
+                btnMap.classList.remove(...activeClasses);
+            } else {
+                gridView.classList.add('hidden');
+                mapView.classList.remove('hidden');
+                
+                btnMap.classList.add(...activeClasses);
+                btnMap.classList.remove(...inactiveClasses);
+                btnGrid.classList.add(...inactiveClasses);
+                btnGrid.classList.remove(...activeClasses);
+
+                if (!mapInstance) {
+                    initMap();
+                } else {
+                    mapInstance.resize();
+                }
+            }
+        }
+
+        // Initialize MapLibre GL
+        function initMap() {
+            const isDark = document.documentElement.classList.contains('dark');
+            const tileUrl = isDark 
+                ? 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'
+                : 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png';
+
+            mapInstance = new maplibregl.Map({
+                container: 'mapContainer',
+                style: {
+                    'version': 8,
+                    'sources': {
+                        'raster-tiles': {
+                            'type': 'raster',
+                            'tiles': [tileUrl],
+                            'tileSize': 256,
+                            'attribution': '&copy; OpenStreetMap &copy; CARTO'
+                        }
+                    },
+                    'layers': [
+                        {
+                            'id': 'simple-tiles',
+                            'type': 'raster',
+                            'source': 'raster-tiles',
+                            'minzoom': 0,
+                            'maxzoom': 22
+                        }
+                    ]
+                },
+                center: [-34.8813, -8.0476], // Fallback para Recife
+                zoom: 11,
+                attributionControl: false
+            });
+
+            mapInstance.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+            
+            mapInstance.on('load', () => {
+                updateMapMarkers();
+            });
+        }
+
+        function updateMapMarkers() {
+            if (!mapInstance) return;
+
+            markers.forEach(m => m.remove());
+            markers = [];
+
+            const visibleCards = Array.from(document.querySelectorAll('.house-card:not(.hidden)'));
+            let bounds = new maplibregl.LngLatBounds();
+            let hasValidPoints = false;
+
+            visibleCards.forEach(card => {
+                const lat = parseFloat(card.dataset.lat);
+                const lng = parseFloat(card.dataset.lng);
+                
+                if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+                    hasValidPoints = true;
+                    bounds.extend([lng, lat]);
+
+                    const el = document.createElement('div');
+                    el.className = 'w-4 h-4 bg-emerald-500 rounded-full border-[2.5px] border-white dark:border-[#141417] shadow-lg cursor-pointer hover:scale-125 hover:bg-brand-500 transition-all z-10';
+                    
+                    const popupHTML = `
+                        <div class="p-1 min-w-[180px] max-w-[220px] font-sans">
+                            <div class="text-[13px] font-bold text-neutral-900 dark:text-white tabular-nums tracking-tight">${card.dataset.priceFormatted}</div>
+                            <div class="text-[11px] text-neutral-500 dark:text-neutral-400 line-clamp-2 mt-1 leading-snug">${card.dataset.title}</div>
+                            <a href="${card.dataset.url}" target="_blank" class="block mt-2.5 text-center bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 py-1.5 rounded-lg text-[10px] font-semibold hover:opacity-90 transition-opacity">Abrir na OLX ↗</a>
+                        </div>
+                    `;
+
+                    const popup = new maplibregl.Popup({ offset: 12, closeButton: false, className: 'glass-popup', maxWidth: '240px' })
+                        .setHTML(popupHTML);
+
+                    const marker = new maplibregl.Marker(el)
+                        .setLngLat([lng, lat])
+                        .setPopup(popup)
+                        .addTo(mapInstance);
+                        
+                    markers.push(marker);
+                }
+            });
+
+            if (hasValidPoints && markers.length > 0) {
+                mapInstance.fitBounds(bounds, { padding: 60, maxZoom: 14, duration: 1500 });
+            }
+        }
+
+        function openSyncModal() {
+            const modal = document.getElementById('syncModal');
+            const content = document.getElementById('syncContent');
+            modal.classList.remove('invisible', 'opacity-0');
+            modal.classList.add('opacity-100');
+            setTimeout(() => {
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeSyncModal() {
+            const modal = document.getElementById('syncModal');
+            const content = document.getElementById('syncContent');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('invisible', 'opacity-0');
+                modal.classList.remove('opacity-100');
+            }, 300);
+        }
+
+        let pendingQueryId = null;
+
+        function openAuthModal(queryId = 'all') {
+            pendingQueryId = queryId;
+            const modal = document.getElementById('authModal');
+            const content = document.getElementById('authContent');
+            const input = document.getElementById('adminSecretInput');
+            
+            input.value = '';
+            document.getElementById('btnConfirmAuth').disabled = false;
+            document.getElementById('btnConfirmAuth').innerHTML = 'Confirmar';
+            
+            modal.classList.remove('invisible', 'opacity-0');
+            modal.classList.add('opacity-100');
+            setTimeout(() => {
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+                input.focus();
+            }, 10);
+        }
+
+        function closeAuthModal() {
+            const modal = document.getElementById('authModal');
+            const content = document.getElementById('authContent');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('invisible', 'opacity-0');
+                modal.classList.remove('opacity-100');
+                pendingQueryId = null;
+            }, 300);
+        }
+
+        async function submitAuth() {
+            const secret = document.getElementById('adminSecretInput').value.trim();
+            if (!secret) return;
+
+            const btnConfirm = document.getElementById('btnConfirmAuth');
+            const originalText = btnConfirm.innerHTML;
+            btnConfirm.innerHTML = `<svg class="animate-spin h-5 w-5 text-current mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+            btnConfirm.disabled = true;
+
+            let url = `/api/monitor/trigger?secret=${encodeURIComponent(secret)}&sync_now=true`;
+            if (pendingQueryId && pendingQueryId !== 'all') {
+                url += `&query_id=${encodeURIComponent(pendingQueryId)}`;
+            }
+
+            try {
+                const response = await fetch(url, { method: 'POST' });
+                if (response.ok) {
+                    const data = await response.json();
+                    closeAuthModal();
+                    showToast(`Sincronização concluída!\nImóveis processados: ${data.found_count}\nNovos encontrados: ${data.new_count}\nAlertas enviados: ${data.notified_count}`, 'success');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 3000);
+                } else {
+                    showToast("Acesso negado ou ocorreu um erro.", 'error');
+                    btnConfirm.innerHTML = originalText;
+                    btnConfirm.disabled = false;
+                }
+            } catch (err) {
+                showToast("Erro de conexão.", 'error');
+                btnConfirm.innerHTML = originalText;
+                btnConfirm.disabled = false;
+            }
+        }
 
         // UI Interactions
         function toggleTheme() {
             document.documentElement.classList.toggle('dark');
-            if (document.documentElement.classList.contains('dark')) {
-                localStorage.theme = 'dark';
-            } else {
-                localStorage.theme = 'light';
+            localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+            
+            // Reload map style if map is open
+            if (mapInstance) {
+                const isDark = document.documentElement.classList.contains('dark');
+                const tileUrl = isDark 
+                    ? 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'
+                    : 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png';
+                    
+                mapInstance.setStyle({
+                    'version': 8,
+                    'sources': {
+                        'raster-tiles': {
+                            'type': 'raster',
+                            'tiles': [tileUrl],
+                            'tileSize': 256,
+                            'attribution': '&copy; OpenStreetMap &copy; CARTO'
+                        }
+                    },
+                    'layers': [{
+                        'id': 'simple-tiles',
+                        'type': 'raster',
+                        'source': 'raster-tiles',
+                        'minzoom': 0,
+                        'maxzoom': 22
+                    }]
+                });
             }
         }
 
@@ -464,7 +893,6 @@
             document.getElementById('activeRegionName').textContent = name || 'Todas as Regiões';
         }
 
-        // Core Filtering & Sorting
         function applyFilters() {
             const term = document.getElementById('searchInput').value.toLowerCase().trim();
             const activeChip = document.querySelector('.chip.active')?.dataset.filter || 'all';
@@ -474,12 +902,10 @@
             const cardsArray = Array.from(document.querySelectorAll('.house-card'));
             let visibleCards = [];
             
-            // First Pass: Filter by Region
             let regionCards = cardsArray.filter(card => {
                 return regionId === 'all' || card.dataset.regionId === regionId;
             });
 
-            // Calculate Regional Average Price
             let sumRegion = 0;
             let countRegion = 0;
             regionCards.forEach(card => {
@@ -491,7 +917,6 @@
             });
             const avgPriceRegion = countRegion > 0 ? (sumRegion / countRegion) : 0;
 
-            // Second Pass: Detailed Filters
             cardsArray.forEach(card => {
                 const title = card.dataset.title;
                 const loc = card.dataset.location;
@@ -511,15 +936,12 @@
 
                 if (show) {
                     card.classList.remove('hidden');
-                    card.classList.add('flex');
                     visibleCards.push(card);
                 } else {
                     card.classList.add('hidden');
-                    card.classList.remove('flex');
                 }
             });
 
-            // Sorting
             const grid = document.getElementById('cardsGrid');
             visibleCards.sort((a, b) => {
                 if (sortVal === 'price_asc') {
@@ -530,18 +952,17 @@
                     const pa = parseFloat(a.dataset.price) || 0;
                     const pb = parseFloat(b.dataset.price) || 0;
                     return pb - pa;
-                } else { // recent
+                } else {
                     const tA = parseFloat(a.dataset.dateTs) || 0;
                     const tB = parseFloat(b.dataset.dateTs) || 0;
-                    return tB - tA; // newest first
+                    return tB - tA;
                 }
             });
 
-            // Re-append to DOM to apply sort
             visibleCards.forEach(card => grid.appendChild(card));
 
-            // Update Metrics Ticker
             updateStats(visibleCards);
+            updateMapMarkers();
         }
 
         function updateStats(visibleCards) {

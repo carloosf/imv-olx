@@ -1,7 +1,8 @@
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, BackgroundTasks, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.database import get_db
 from app.models import (
     HouseAdFilter,
@@ -20,10 +21,30 @@ from app.services import (
 router = APIRouter(prefix="/api", tags=["Imóveis & Monitor"])
 
 
+async def verify_admin_access(
+    x_admin_key: Optional[str] = Header(default=None, alias="x-admin-key"),
+    secret: Optional[str] = Query(default=None),
+) -> bool:
+    """
+    Valida a chave de administração fornecida via Header 'x-admin-key' ou Query param 'secret'.
+    Retorna HTTP 403 Forbidden caso a chave seja ausente ou inválida.
+    """
+    settings = get_settings()
+    provided_key = x_admin_key or secret
+    if not provided_key or provided_key != settings.ADMIN_SECRET_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso restrito ao administrador",
+        )
+    return True
+
+
 @router.get("/houses", response_model=HouseAdListResponse, summary="Listar imóveis com filtros e paginação")
 async def get_houses(
-    limit: int = Query(default=20, ge=1, le=100, description="Quantidade máxima de itens por página"),
+    limit: int = Query(default=100, ge=1, le=1000, description="Quantidade máxima de itens por página"),
     offset: int = Query(default=0, ge=0, description="Deslocamento para paginação"),
+    search_query_id: Optional[int] = Query(default=None, description="ID da região/busca cadastrada"),
+    query_id: Optional[int] = Query(default=None, description="Alias para search_query_id"),
     min_price: Optional[float] = Query(default=None, ge=0, description="Preço mínimo em R$"),
     max_price: Optional[float] = Query(default=None, ge=0, description="Preço máximo em R$"),
     search: Optional[str] = Query(default=None, description="Busca textual por título, bairro ou cidade"),
@@ -34,7 +55,9 @@ async def get_houses(
     Retorna a listagem de imóveis capturados da OLX salvos no banco de dados.
     Permite ordenação cronológica decrescente, busca textual e filtragem por faixa de preço.
     """
+    effective_query_id = search_query_id if search_query_id is not None else query_id
     filters = HouseAdFilter(
+        search_query_id=effective_query_id,
         min_price=min_price,
         max_price=max_price,
         search=search,
@@ -70,7 +93,8 @@ async def get_house_detail(
 @router.post(
     "/monitor/trigger",
     response_model=MonitorTriggerResponse,
-    summary="Disparar sincronização manual da OLX",
+    summary="Disparar sincronização manual da OLX (Restrito ao Administrador)",
+    dependencies=[Depends(verify_admin_access)],
 )
 async def trigger_monitor_sync(
     background_tasks: BackgroundTasks,
@@ -82,29 +106,35 @@ async def trigger_monitor_sync(
         default=None,
         description="URL customizada opcional para scraping pontual",
     ),
+    query_id: Optional[int] = Query(
+        default=None,
+        description="ID da região específica para atualizar",
+    ),
 ):
     """
     Endpoint administrativo para disparar a rotina de extração da OLX manualmente.
+    Requer autenticação via header 'x-admin-key' ou query param '?secret='.
     Captura os novos anúncios, salva no banco e envia alertas no Telegram.
     """
     if sync_now:
-        result = await run_sync_routine(custom_url=custom_url)
+        res = await run_sync_routine(custom_url=custom_url, query_id=query_id)
         return MonitorTriggerResponse(
-            message=result.get("message", "Rotina executada."),
-            status=result.get("status", "completed"),
-            found_count=result.get("found_count", 0),
-            new_count=result.get("new_count", 0),
-            notified_count=result.get("notified_count", 0),
+            message=res["message"],
+            status=res["status"],
+            found_count=res["found_count"],
+            new_count=res["new_count"],
+            notified_count=res["notified_count"],
         )
     else:
-        background_tasks.add_task(run_sync_routine, custom_url)
+        background_tasks.add_task(run_sync_routine, custom_url, query_id)
         return MonitorTriggerResponse(
-            message="Sincronização agendada em background com sucesso.",
+            message="Sincronização agendada em background.",
             status="scheduled",
             found_count=0,
             new_count=0,
             notified_count=0,
         )
+
 
 
 @router.get("/status", response_model=MonitorStatus, summary="Status do monitor e estatísticas")

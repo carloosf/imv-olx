@@ -61,8 +61,8 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def init_db() -> None:
-    """Cria as tabelas no banco de dados na inicialização e executa auto-seed de SearchQuery."""
-    from app.models import SearchQuery
+    """Cria as tabelas no banco de dados na inicialização e executa auto-seed das regiões padrão."""
+    from app.seed import seed_initial_regions
 
     async with engine.begin() as conn:
         if "sqlite" in settings.DATABASE_URL:
@@ -70,16 +70,7 @@ async def init_db() -> None:
             await conn.execute(text("PRAGMA synchronous=NORMAL;"))
         await conn.run_sync(Base.metadata.create_all)
 
-    # Auto-seed: Se a tabela SearchQuery estiver vazia mas existir OLX_SEARCH_URL no .env, cria o primeiro registro
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(select(SearchQuery))
-        first_query = result.scalars().first()
-        if not first_query and settings.OLX_SEARCH_URL:
-            default_query = SearchQuery(
-                name="Busca Padrão (Recife até R$ 1.800)",
-                olx_url=settings.OLX_SEARCH_URL,
-                is_active=True,
-            )
-            session.add(default_query)
-            await session.commit()
+    # Executa o seed das 3 regiões alvo padrão (SP, RJ, PR) caso a tabela esteja vazia
+    await seed_initial_regions()
+
 

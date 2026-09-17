@@ -48,7 +48,6 @@ async def get_monitor_status(db: AsyncSession) -> MonitorStatus:
         last_new_count=monitor_state["last_new_count"],
         total_ads_stored=total_count,
         check_interval_minutes=settings.CHECK_INTERVAL_MINUTES,
-        target_search_url=settings.OLX_SEARCH_URL,
     )
 
 
@@ -154,14 +153,10 @@ async def get_house_ad_by_id(db: AsyncSession, ad_id: int) -> Optional[HouseAd]:
     return result.scalar_one_or_none()
 
 
-async def run_sync_routine(custom_url: Optional[str] = None) -> dict:
+async def run_sync_routine(custom_url: Optional[str] = None, query_id: Optional[int] = None) -> dict:
     """
-    Rotina central de sincronização:
-    1. Faz scraping da URL da OLX.
-    2. Identifica anúncios novos comparando external_id.
-    3. Persiste novos registros no banco.
-    4. Dispara alertas no Telegram em ordem cronológica (mais antigo para mais recente).
-    5. Atualiza o status de notificação.
+    Rotina central de sincronização multi-região (disparada manualmente).
+    Itera sobre todas as regiões ativas cadastradas no banco ou uma URL customizada.
     """
     global monitor_state
     if monitor_state["is_running"]:
@@ -175,171 +170,85 @@ async def run_sync_routine(custom_url: Optional[str] = None) -> dict:
         }
 
     monitor_state["is_running"] = True
-    settings = get_settings()
-    target_url = custom_url or settings.OLX_SEARCH_URL
     scraper = OLXScraper()
     notifier = TelegramNotifier()
 
-    found_count = 0
-    new_count = 0
-    notified_count = 0
-
-    # 1. Aplica Jitter aleatório (3 a 15 segundos) para que as requisições não tenham padrão fixo de relógio
-    if not custom_url:
-        jitter_seconds = random.randint(3, 15)
-        logger.info(f"Aplicando jitter aleatório de {jitter_seconds}s antes do scrape...")
-        await asyncio.sleep(jitter_seconds)
+    total_found = 0
+    total_new = 0
+    total_notified = 0
 
     try:
-        logger.info(f"Iniciando rotina de sincronização para: {target_url}")
-        ads_found: List[HouseAdCreate] = await scraper.scrape(target_url)
-        found_count = len(ads_found)
-
-        if not ads_found:
-            monitor_state["consecutive_errors"] += 1
-            # Backoff progressivo caso ocorram falhas consecutivas
-            backoff_min = min(60, 5 * (2 ** (monitor_state["consecutive_errors"] - 1)))
-            monitor_state["current_backoff_seconds"] = backoff_min * 60
-            logger.warning(
-                f"Nenhum anúncio obtido (falhas consecutivas: {monitor_state['consecutive_errors']}). Backoff sugerido: {backoff_min} min."
-            )
-            monitor_state.update(
-                {
-                    "last_run_at": datetime.now(timezone.utc),
-                    "last_run_status": f"Sem anúncios (tentativa {monitor_state['consecutive_errors']})",
-                    "last_found_count": 0,
-                    "last_new_count": 0,
-                }
-            )
-            return {
-                "status": "success",
-                "message": "Nenhum anúncio encontrado na URL especificada.",
-                "found_count": 0,
-                "new_count": 0,
-                "notified_count": 0,
-            }
-
-        # Reseta contador de erros em caso de sucesso
-        monitor_state["consecutive_errors"] = 0
-        monitor_state["current_backoff_seconds"] = 0
+        from app.worker import process_single_search_query
 
         async with AsyncSessionLocal() as session:
-            # 1. Obtém lista de IDs externos encontrados
-            external_ids = [ad.external_id for ad in ads_found]
+            if custom_url:
+                active_queries = [SearchQuery(id=None, name="Custom", olx_url=custom_url)]
+            elif query_id:
+                result = await session.execute(select(SearchQuery).where(SearchQuery.id == query_id))
+                active_queries = list(result.scalars().all())
+            else:
+                result = await session.execute(select(SearchQuery).where(SearchQuery.is_active == True).order_by(SearchQuery.id.asc()))
+                active_queries = list(result.scalars().all())
 
-            # 2. Consulta IDs que já existem no banco
-            existing_query = select(HouseAd.external_id).where(HouseAd.external_id.in_(external_ids))
-            existing_result = await session.execute(existing_query)
-            existing_ids = set(existing_result.scalars().all())
+        if not active_queries:
+             logger.warning("Nenhuma busca ativa encontrada para sincronização manual.")
+             return {
+                 "status": "error",
+                 "message": "Nenhuma busca ativa configurada.",
+                 "found_count": 0, "new_count": 0, "notified_count": 0,
+             }
 
-            # 3. Filtra apenas os novos anúncios
-            new_ads = [ad for ad in ads_found if ad.external_id not in existing_ids]
-            new_count = len(new_ads)
-
-            logger.info(f"Total encontrados: {found_count} | Novos anúncios: {new_count}")
-
-            if not new_ads:
-                monitor_state.update(
-                    {
-                        "last_run_at": datetime.now(timezone.utc),
-                        "last_run_status": f"Sucesso ({found_count} analisados, 0 novos)",
-                        "last_found_count": found_count,
-                        "last_new_count": 0,
-                    }
+        for idx, query in enumerate(active_queries):
+            try:
+                res = await process_single_search_query(
+                    query_id=query.id,
+                    query_name=query.name,
+                    olx_url=query.olx_url,
+                    scraper=scraper,
+                    notifier=notifier
                 )
-                return {
-                    "status": "success",
-                    "message": f"Nenhum novo imóvel detectado ({found_count} verificados).",
-                    "found_count": found_count,
-                    "new_count": 0,
-                    "notified_count": 0,
-                }
+                total_found += res.get("found", 0)
+                total_new += res.get("new", 0)
+                total_notified += res.get("notified", 0)
 
-            # 4. Ordena do mais antigo para o mais recente para disparar notificações na ordem correta
-            def sort_key(item: HouseAdCreate):
-                return item.created_at_olx or datetime.min
+                # Update last_synced_at
+                if query.id:
+                    query.last_synced_at = datetime.now(timezone.utc)
+                    session.add(query)
+                    await session.commit()
 
-            new_ads.sort(key=sort_key)
+            except Exception as e:
+                logger.error(f"Erro ao processar região '{query.name}': {e}")
+                monitor_state["consecutive_errors"] += 1
+            
+            if idx < len(active_queries) - 1:
+                await asyncio.sleep(2.0)
 
-            # 5. Salva os novos registros no banco
-            saved_entities: List[HouseAd] = []
+        monitor_state.update({
+            "last_run_at": datetime.now(timezone.utc),
+            "last_run_status": f"Sucesso (Manual)",
+            "last_found_count": total_found,
+            "last_new_count": total_new,
+            "consecutive_errors": 0,
+        })
+        logger.info(f"Sincronização manual concluída: {total_found} enc, {total_new} novos, {total_notified} notifs.")
 
-            # Busca ID da SearchQuery ativa correspondente
-            default_query_result = await session.execute(select(SearchQuery.id).where(SearchQuery.is_active == True).limit(1))
-            active_sq_id = default_query_result.scalar_one_or_none()
-
-            for item in new_ads:
-                pval = item.price_val if item.price_val is not None else item.price
-                pstr = item.price_str or item.price_formatted or "Sob Consulta"
-                ad_entity = HouseAd(
-                    search_query_id=item.search_query_id or active_sq_id,
-                    external_id=item.external_id,
-                    title=item.title,
-                    price_val=pval,
-                    price_str=pstr,
-                    location=item.location,
-                    latitude=item.latitude,
-                    longitude=item.longitude,
-                    url=item.url,
-                    image_url=item.image_url,
-                    created_at_olx=item.created_at_olx,
-                    created_at=datetime.now(timezone.utc),
-                    notified_telegram=False,
-                )
-                session.add(ad_entity)
-                saved_entities.append(ad_entity)
-
-            await session.commit()
-
-            # Recarrega os objetos salvos
-            for entity in saved_entities:
-                await session.refresh(entity)
-
-            # 6. Dispara as notificações no Telegram
-            for entity in saved_entities:
-                try:
-                    success = await notifier.notify_ad(entity)
-                    if success:
-                        entity.notified_telegram = True
-                        notified_count += 1
-                        # Pequeno intervalo para evitar rate limit na API do Telegram
-                        await asyncio.sleep(0.5)
-                except Exception as exc:
-                    logger.error(f"Erro ao notificar anúncio {entity.external_id}: {exc}")
-
-            await session.commit()
-
-        monitor_state.update(
-            {
-                "last_run_at": datetime.now(timezone.utc),
-                "last_run_status": f"Sucesso ({new_count} novos inseridos, {notified_count} notificados)",
-                "last_found_count": found_count,
-                "last_new_count": new_count,
-            }
-        )
-
-        return {
-            "status": "success",
-            "message": f"Sincronização concluída: {new_count} novos anúncios salvos, {notified_count} alertas disparados.",
-            "found_count": found_count,
-            "new_count": new_count,
-            "notified_count": notified_count,
-        }
-
-    except Exception as exc:
-        logger.exception(f"Erro inesperado durante a rotina de sincronização: {exc}")
-        monitor_state.update(
-            {
-                "last_run_at": datetime.now(timezone.utc),
-                "last_run_status": f"Erro: {str(exc)}",
-            }
-        )
-        return {
-            "status": "error",
-            "message": f"Erro na rotina de sincronização: {str(exc)}",
-            "found_count": found_count,
-            "new_count": new_count,
-            "notified_count": notified_count,
-        }
+    except Exception as e:
+        logger.error(f"Erro fatal na rotina de sincronização manual: {e}")
+        monitor_state.update({
+            "last_run_status": f"Erro (Manual): {str(e)}",
+            "consecutive_errors": monitor_state["consecutive_errors"] + 1
+        })
     finally:
         monitor_state["is_running"] = False
+        await scraper.close()
+        
+    return {
+        "status": "completed",
+        "message": "Rotina executada.",
+        "found_count": total_found,
+        "new_count": total_new,
+        "notified_count": total_notified,
+    }
+
+
